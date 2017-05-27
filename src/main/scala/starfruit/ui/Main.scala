@@ -1,7 +1,7 @@
 package starfruit
 package ui
 
-import java.time.{LocalDateTime, ZoneId}
+import java.time.{LocalDateTime, ZoneId, Instant}
 import javafx.application.Application
 import javafx.scene.paint.Color
 import language.reflectiveCalls
@@ -19,10 +19,35 @@ class Main extends BaseApplication {
   val sceneRoot = new MainWindow()
   implicit val pconfig = PConfig.Default.copy(areSharedObjectsSupported = false)
 
-  val alarms = javafx.collections.FXCollections.observableArrayList[Alarm]()
-  sceneRoot.alarmsTable.setItems(new FxCollectionsExtra.ObservableView(alarms)(a =>
-      (LocalDateTime.ofInstant(null, ZoneId.systemDefault), a.recurrence.toString, Color.web(a.backgroundColor), "🖅", a.message.toString)
-    ))
+  val alarms = javafx.collections.FXCollections.observableArrayList[AlarmState]()
+  sceneRoot.alarmsTable.setItems(new FxCollectionsExtra.ObservableView(alarms)({ s =>
+        val recString = s.alarm.recurrence match {
+          case Alarm.NoRecurrence => "no recurrence"
+          case Alarm.HourMinutelyRecurrence(h, m) => s"${h}H ${m}M"
+          case Alarm.DailyRecurrence(every, _) => s"every ${every} day(s)"
+          case Alarm.WeeklyRecurrence(every, onDays) => s"every ${every} week(s), ${onDays.size} days a week."
+          case Alarm.MonthlyRecurrence(every, Alarm.NthDayOfMonth(d)) => s"every ${every} month(s), on the $d"
+          case Alarm.MonthlyRecurrence(every, Alarm.NthWeekDayOfMonth(week, day)) =>
+            week match {
+              case -5 | -4 => s"every ${every} month(s), the ${week}th last $day"
+              case -3 => s"every ${every} month(s), the 3rd last $day"
+              case -2 => s"every ${every} month(s), the 2nd last $day"
+              case -1 => s"every ${every} month(s), the last $day"
+              case 1 => s"every ${every} month(s), the first $day"
+              case 2 => s"every ${every} month(s), the 2nd $day"
+              case 3 => s"every ${every} month(s), the 3rd $day"
+              case 4 | 5 => s"every ${every} month(s), the ${week}th $day"
+            }
+            
+          case Alarm.YearlyRecurrence(every, _, _, _) => s"every ${every} year(s)"
+        }
+        val msg = s.alarm.message match {
+          case m: Alarm.TextMessage => m.message
+          case m: Alarm.ScriptOutputMessage => "script: " + m.script
+          case m: Alarm.FileContentsMessage => "file: " + m.path
+        }
+        (LocalDateTime.ofInstant(s.nextOcurrence, ZoneId.systemDefault), recString, Color.web(s.alarm.backgroundColor), "🖅", msg)
+      }))
   
   sceneRoot.toolBar.newButton.displayAlarm setOnAction { _ => 
     val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, None)
@@ -45,7 +70,7 @@ class Main extends BaseApplication {
     _.disableProperty bind sceneRoot.alarmsTable.getSelectionModel.selectedItemProperty.isNull)
   sceneRoot.toolBar.editButton.setOnAction { _ =>
     val selected = alarms.get(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex)
-    val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(selected))
+    val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(selected.alarm))
     var resAlarm: Option[Alarm] = None
     dialog.okButton.setOnAction { _ =>
       resAlarm = Some(dialog.getAlarm)
@@ -71,15 +96,15 @@ class Main extends BaseApplication {
     def undo(): Unit
   }
   case class NewAlarm(alarm: Alarm) extends Action {
-    def `do`() = alarms.add(alarm)
+    def `do`() = alarms.add(AlarmState(alarm, AlarmState.Active, Instant.now))
     def undo() = alarms.remove(alarm)
   }
-  case class DeleteAlarm(alarm: Alarm) extends Action {
+  case class DeleteAlarm(alarm: AlarmState) extends Action {
     def `do`() = alarms.remove(alarm)
     def undo() = alarms.add(alarm)
   }
-  case class EditAlarm(old: Alarm, updated: Alarm) extends Action {
-    def `do`() = alarms.set(alarms.indexOf(old), updated)
+  case class EditAlarm(old: AlarmState, updated: Alarm) extends Action {
+    def `do`() = alarms.set(alarms.indexOf(old), AlarmState(updated, AlarmState.Active, Instant.now))
     def undo() = alarms.set(alarms.indexOf(updated), old)
   }
   
