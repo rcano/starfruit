@@ -120,7 +120,7 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
         alarmPane.extra.reminder.setSelected(true)
         alarmPane.extra.reminderDurationPicker.setDuration(reminder.duration)
         alarmPane.extra.reminderType.getSelectionModel.select(if (reminder.before) 0 else 1)
-        alarmPane.extra.reminderForFirstRecurrenceOnly.setSelected(reminder.forFirstOcurrenceOnly)
+        alarmPane.extra.reminderForFirstRecurrenceOnly.setSelected(reminder.forFirstOccurrenceOnly)
       }
       initial.cancelIfLate foreach { cancel =>
         alarmPane.extra.cancelIfLate.setSelected(true)

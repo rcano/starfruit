@@ -6,7 +6,8 @@ import java.util.EnumSet
 import prickle._
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
-import scala.util.{Failure, Success}
+import scala.sys.process._
+import scala.util.{Failure, Success, Try}
 
 case class Alarm(
   message: Alarm.MessageSource,
@@ -25,10 +26,12 @@ case class Alarm(
   cancelIfLate: Option[Alarm.CancelIfLateBy]
 )
 object Alarm {
-  sealed trait MessageSource
-  case class TextMessage(message: String) extends MessageSource
-  case class FileContentsMessage(path: File) extends MessageSource
-  case class ScriptOutputMessage(script: String) extends MessageSource
+  sealed trait MessageSource {
+    def get(): Try[String]
+  }
+  case class TextMessage(message: String) extends MessageSource { def get = Success(message) }
+  case class FileContentsMessage(path: File) extends MessageSource { def get = Try(path.lineIterator.mkString("\n")) }
+  case class ScriptOutputMessage(script: String) extends MessageSource { def get = Try(Seq("bash", "-c", "script").!!) }
   
   sealed trait Sound
   case object NoSound extends Sound
@@ -61,7 +64,7 @@ object Alarm {
   
   case class Repetition(every: Duration, endAfter: Int Either Duration)
   
-  case class Reminder(duration: Duration, before: Boolean, forFirstOcurrenceOnly: Boolean)
+  case class Reminder(duration: Duration, before: Boolean, forFirstOccurrenceOnly: Boolean)
   case class CancelIfLateBy(duration: Duration, autoCloseWindowAfterThisTime: Boolean)
 }
 

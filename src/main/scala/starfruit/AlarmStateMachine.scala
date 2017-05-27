@@ -6,7 +6,7 @@ import java.time._
 import java.time.temporal.{ChronoField, ChronoUnit, TemporalAdjusters}
 import scala.collection.JavaConverters._
 
-case class AlarmState(alarm: Alarm, state: AlarmState.State, started: Instant, nextOcurrence: Instant, recurrenceInstance: Int,
+case class AlarmState(alarm: Alarm, state: AlarmState.State, started: Instant, nextOccurrence: Instant, recurrenceInstance: Int,
                       nextReminder: Option[Instant], reminderInstance: Option[Int])
 object AlarmState {
   def apply(alarm: Alarm, state: AlarmState.State, now: Instant): AlarmState = {
@@ -38,11 +38,11 @@ object AlarmStateMachine {
   def checkAlarm(now: Instant, state: AlarmState): CheckResult = {
     import state.alarm._
     //first check is the alarm is due
-    if (now >= state.nextOcurrence) {
+    if (now >= state.nextOccurrence) {
       if (state.state == AlarmState.Showing) {
         //the only automatic thing to happen here is closing the dialog. So check that
         cancelIfLate.map { lateDefinition =>
-          if (Duration.between(state.nextOcurrence, now) > lateDefinition.duration && lateDefinition.autoCloseWindowAfterThisTime)
+          if (Duration.between(state.nextOccurrence, now) > lateDefinition.duration && lateDefinition.autoCloseWindowAfterThisTime)
             AutoCloseAlarmNotification(advanceAlarm(state))
           else KeepState
         } getOrElse KeepState
@@ -51,7 +51,7 @@ object AlarmStateMachine {
           //no definition for cancellation, so show the thing
           NotifyAlarm(state.copy(state = AlarmState.Showing))
         } { duration =>
-          if (Duration.between(state.nextOcurrence, now) > duration.duration) //expiry time happened, so skip this occurrence
+          if (Duration.between(state.nextOccurrence, now) > duration.duration) //expiry time happened, so skip this occurrence
             StateChanged(advanceAlarm(state))
           else //should still show the alarm
             NotifyAlarm(state.copy(state = AlarmState.Showing))
@@ -65,7 +65,7 @@ object AlarmStateMachine {
         //nothing to remind
         KeepState
       } { t =>
-        if (now >= t && (!reminder.get.forFirstOcurrenceOnly || state.reminderInstance.get == 0)) {
+        if (now >= t && (!reminder.get.forFirstOccurrenceOnly || state.reminderInstance.get == 0)) {
           //TODO proper reminder logic
           //calculate next reminder, for that pretend we advance the alarm. This ensures that this reminder wont trigger again
           val next = advanceAlarm(state)
@@ -81,54 +81,54 @@ object AlarmStateMachine {
     
     val shouldEnd = end.collect {
       case Left(times) if times <= state.recurrenceInstance + 1 => state.copy(state = AlarmState.Ended)
-      case Right(at) if at.atZone(ZoneId.systemDefault).toInstant <= state.nextOcurrence=> state.copy(state = AlarmState.Ended)
+      case Right(at) if at.atZone(ZoneId.systemDefault).toInstant <= state.nextOccurrence=> state.copy(state = AlarmState.Ended)
     }
     
     shouldEnd foreach (return _)
     
-    val stateWithOcurrenceUpdated = recurrence match {
+    val stateWithOccurrenceUpdated = recurrence match {
       case Alarm.NoRecurrence => state.copy(state = AlarmState.Ended)
         
       case Alarm.HourMinutelyRecurrence(h, m) => 
-        val next = Iterator.iterate(state.nextOcurrence)(_.plus(h, ChronoUnit.HOURS).plus(m, ChronoUnit.MINUTES)).filterNot(i =>
+        val next = Iterator.iterate(state.nextOccurrence)(_.plus(h, ChronoUnit.HOURS).plus(m, ChronoUnit.MINUTES)).filterNot(i =>
           exceptionOnDates contains ZonedDateTime.ofInstant(i, ZoneId.systemDefault).toLocalDate).next
-        state.copy(nextOcurrence = next, recurrenceInstance = state.recurrenceInstance + 1)
+        state.copy(nextOccurrence = next, recurrenceInstance = state.recurrenceInstance + 1)
         
       case Alarm.DailyRecurrence(every, onDays) =>
-        var next = ZonedDateTime.ofInstant(state.nextOcurrence, ZoneId.systemDefault)
+        var next = ZonedDateTime.ofInstant(state.nextOccurrence, ZoneId.systemDefault)
         next = Iterator.iterate(next)(_.plusDays(every)).filter(d => onDays.contains(d.getDayOfWeek) && d.isAfter(next)).filterNot(d =>
           exceptionOnDates contains d.toLocalDate).next
-        state.copy(nextOcurrence = next.toInstant, recurrenceInstance = state.recurrenceInstance + 1)
+        state.copy(nextOccurrence = next.toInstant, recurrenceInstance = state.recurrenceInstance + 1)
         
       case Alarm.WeeklyRecurrence(every, onDays) =>
-        var next = ZonedDateTime.ofInstant(state.nextOcurrence, ZoneId.systemDefault)
+        var next = ZonedDateTime.ofInstant(state.nextOccurrence, ZoneId.systemDefault)
         val onDaysScala = onDays.asScala
         next = Iterator.iterate(next)(_.plusWeeks(every)).flatMap(week => 
           onDaysScala.iterator.map(d => week.`with`(ChronoField.DAY_OF_WEEK, d.getValue))).filterNot(d =>
           exceptionOnDates contains d.toLocalDate).find(_ isAfter next).get
-        state.copy(nextOcurrence = next.toInstant, recurrenceInstance = state.recurrenceInstance + 1)
+        state.copy(nextOccurrence = next.toInstant, recurrenceInstance = state.recurrenceInstance + 1)
         
       case Alarm.MonthlyRecurrence(every, onDayOfMonth) =>
-        val next = Iterator.iterate(ZonedDateTime.ofInstant(state.nextOcurrence, ZoneId.systemDefault).plusMonths(every))(_.plusMonths(every)).
+        val next = Iterator.iterate(ZonedDateTime.ofInstant(state.nextOccurrence, ZoneId.systemDefault).plusMonths(every))(_.plusMonths(every)).
           flatMap(calculateDateAtDayOfMonth(_, onDayOfMonth, None)).filterNot(d => exceptionOnDates contains d.toLocalDate).next
-        state.copy(nextOcurrence = next.toInstant, recurrenceInstance = state.recurrenceInstance + 1)
+        state.copy(nextOccurrence = next.toInstant, recurrenceInstance = state.recurrenceInstance + 1)
         
       case Alarm.YearlyRecurrence(every, onDayOfMonth, onMonths, febAction) =>
-        var next = ZonedDateTime.ofInstant(state.nextOcurrence, ZoneId.systemDefault)
+        var next = ZonedDateTime.ofInstant(state.nextOccurrence, ZoneId.systemDefault)
         val onMonthsScala = onMonths.asScala
         
         next = Iterator.iterate(next)(_.plusYears(1)).flatMap(date =>
           onMonthsScala.iterator.map(m => date.withMonth(m.getValue)).flatMap(calculateDateAtDayOfMonth(_, onDayOfMonth, febAction))
         ).filterNot(d => exceptionOnDates contains d.toLocalDate).find(_ isAfter next).get
         
-        state.copy(nextOcurrence = next.toInstant, recurrenceInstance = state.recurrenceInstance + 1)
+        state.copy(nextOccurrence = next.toInstant, recurrenceInstance = state.recurrenceInstance + 1)
     }
     //calculate reminder based on new time
-    reminder.fold(stateWithOcurrenceUpdated) {
-      case Alarm.Reminder(duration, inAdvance, true) if state.reminderInstance.get >= 1 => stateWithOcurrenceUpdated
+    reminder.fold(stateWithOccurrenceUpdated) {
+      case Alarm.Reminder(duration, inAdvance, true) if state.reminderInstance.get >= 1 => stateWithOccurrenceUpdated
       case Alarm.Reminder(duration, inAdvance, firstOccurrenceOnly) =>
-        val reminderTime = if (inAdvance) stateWithOcurrenceUpdated.nextOcurrence.minus(duration) else stateWithOcurrenceUpdated.nextOcurrence.plus(duration)
-        stateWithOcurrenceUpdated.copy(nextReminder = Some(reminderTime))
+        val reminderTime = if (inAdvance) stateWithOccurrenceUpdated.nextOccurrence.minus(duration) else stateWithOccurrenceUpdated.nextOccurrence.plus(duration)
+        stateWithOccurrenceUpdated.copy(nextReminder = Some(reminderTime))
     }
   }
   
