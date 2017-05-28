@@ -1,10 +1,12 @@
 package starfruit
 package ui
 
-import java.time.{LocalDateTime, ZoneId, Instant}
-import javafx.application.Application
-import javafx.scene.paint.Color
 import language.reflectiveCalls
+import java.time.{LocalDateTime, ZoneId, Instant, Clock, Duration}
+import javafx.application.{Application, Platform}
+import javafx.scene.control._
+import javafx.scene.paint.Color
+import scala.collection.JavaConverters._
 
 import prickle._, AlarmPicklers._
 
@@ -46,7 +48,7 @@ class Main extends BaseApplication {
           case m: Alarm.ScriptOutputMessage => "script: " + m.script
           case m: Alarm.FileContentsMessage => "file: " + m.path
         }
-        (LocalDateTime.ofInstant(s.nextOcurrence, ZoneId.systemDefault), recString, Color.web(s.alarm.backgroundColor), "🖅", msg)
+        (LocalDateTime.ofInstant(s.nextOccurrence, ZoneId.systemDefault), recString, Color.web(s.alarm.backgroundColor), "🖅", msg)
       }))
   
   sceneRoot.toolBar.newButton.displayAlarm setOnAction { _ => 
@@ -96,7 +98,7 @@ class Main extends BaseApplication {
     def undo(): Unit
   }
   case class NewAlarm(alarm: Alarm) extends Action {
-    def `do`() = alarms.add(AlarmState(alarm, AlarmState.Active, Instant.now))
+    def `do`() = alarms.add(AlarmState(alarm, AlarmState.Active, wallClock.instant))
     def undo() = alarms.remove(alarm)
   }
   case class DeleteAlarm(alarm: AlarmState) extends Action {
@@ -104,7 +106,7 @@ class Main extends BaseApplication {
     def undo() = alarms.add(alarm)
   }
   case class EditAlarm(old: AlarmState, updated: Alarm) extends Action {
-    def `do`() = alarms.set(alarms.indexOf(old), AlarmState(updated, AlarmState.Active, Instant.now))
+    def `do`() = alarms.set(alarms.indexOf(old), AlarmState(updated, AlarmState.Active, wallClock.instant))
     def undo() = alarms.set(alarms.indexOf(updated), old)
   }
   
@@ -121,4 +123,47 @@ class Main extends BaseApplication {
     redoQueue push elem
     elem.undo()
   }
+  
+  private val showingAlarms = collection.mutable.Map[Alarm, Alert]()
+  
+  private def newAlert(msg: String, buttons: ButtonType*) = {
+    val res = new Alert(Alert.AlertType.INFORMATION, msg, buttons:_*)
+    res.getDialogPane.getScene.getStylesheets.addAll(sceneRoot.getScene.getStylesheets)
+    res
+  }
+  
+  val wallClock = Clock.tickMinutes(ZoneId.systemDefault)
+  val checkerThread = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(runnable => new Thread(null, runnable, "Clock", 1024*100))
+  checkerThread.scheduleAtFixedRate(() => {
+      val now = wallClock.instant()
+      val newStates = alarms.asScala.map { state =>
+        println("checking " + state)
+        val checkResult = AlarmStateMachine.checkAlarm(now, state)
+        println("  ===> " + checkResult)
+        checkResult match {
+          case AlarmStateMachine.KeepState => state
+          case AlarmStateMachine.NotifyAlarm(next) =>
+            Platform.runLater { () =>
+              val message = next.alarm.message.get()
+              val alert = newAlert(message.fold(_.toString, identity), ButtonType.OK)
+              showingAlarms(next.alarm) = alert
+              alert.showAndWait.ifPresent(_ => 
+                //must run this later, to ensure the alarms where properly updated
+                Platform.runLater { () =>
+                  val next2 = AlarmStateMachine.advanceAlarm(next.copy(state = AlarmState.Active))
+                  if (next2.state == AlarmState.Ended) alarms.remove(next)
+                  else alarms.set(alarms.indexOf(next), next2)
+                })
+            }
+            next
+          case AlarmStateMachine.NotifyReminder(next) =>
+            Platform.runLater(() => newAlert("Reminder for:\n" + next.alarm.message.get().fold(_.toString, identity) + 
+                                              "\nocurring in " + Duration.between(now, next.nextOccurrence))) 
+            next
+          case AlarmStateMachine.AutoCloseAlarmNotification(next) =>
+            Platform.runLater(() => showingAlarms.remove(next.alarm) foreach (_.close()))
+            AlarmStateMachine.advanceAlarm(next.copy(state = AlarmState.Active))
+        }}
+      Platform.runLater(() => alarms.setAll(newStates.filter(_.state != AlarmState.Ended):_*))
+    }, 0, 20, scala.concurrent.duration.SECONDS)
 }
