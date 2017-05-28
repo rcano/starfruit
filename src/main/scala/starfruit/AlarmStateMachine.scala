@@ -7,7 +7,7 @@ import java.time.temporal.{ChronoField, ChronoUnit, TemporalAdjusters}
 import scala.collection.JavaConverters._
 
 case class AlarmState(alarm: Alarm, state: AlarmState.State, started: Instant, nextOccurrence: Instant, recurrenceInstance: Int,
-                      nextReminder: Option[Instant], reminderInstance: Option[Int])
+                      subrecurrenceInstance: Int, nextReminder: Option[Instant], reminderInstance: Option[Int])
 object AlarmState {
   def apply(alarm: Alarm, state: AlarmState.State, now: Instant): AlarmState = {
     val firstOccurrence = alarm.when match {
@@ -15,9 +15,9 @@ object AlarmState {
       case Alarm.TimeFromNow(hours, minutes) => now.plus(hours, ChronoUnit.HOURS).plus(minutes, ChronoUnit.MINUTES)
     }
     val reminder = alarm.reminder map { case Alarm.Reminder(duration, inAdvance, firstOccurrenceOnly) =>
-      if (inAdvance) firstOccurrence.minus(duration) else firstOccurrence.plus(duration)
+        if (inAdvance) firstOccurrence.minus(duration) else firstOccurrence.plus(duration)
     }
-    AlarmState(alarm, state, now, firstOccurrence, 0, reminder, reminder.map(_ => 0))
+    AlarmState(alarm, state, now, firstOccurrence, 0, 0, reminder, reminder.map(_ => 0))
   }
   
   sealed trait State
@@ -69,6 +69,7 @@ object AlarmStateMachine {
           //TODO proper reminder logic
           //calculate next reminder, for that pretend we advance the alarm. This ensures that this reminder wont trigger again
           val next = advanceAlarm(state)
+          println(Console.YELLOW + "next reminder " + next.nextReminder + Console.RESET)
           NotifyReminder(state.copy(nextReminder = next.nextReminder, reminderInstance = state.reminderInstance map 1.+))
           
         } else KeepState
@@ -110,7 +111,7 @@ object AlarmStateMachine {
         
       case Alarm.MonthlyRecurrence(every, onDayOfMonth) =>
         val next = Iterator.iterate(ZonedDateTime.ofInstant(state.nextOccurrence, ZoneId.systemDefault).plusMonths(every))(_.plusMonths(every)).
-          flatMap(calculateDateAtDayOfMonth(_, onDayOfMonth, None)).filterNot(d => exceptionOnDates contains d.toLocalDate).next
+        flatMap(calculateDateAtDayOfMonth(_, onDayOfMonth, None)).filterNot(d => exceptionOnDates contains d.toLocalDate).next
         state.copy(nextOccurrence = next.toInstant, recurrenceInstance = state.recurrenceInstance + 1)
         
       case Alarm.YearlyRecurrence(every, onDayOfMonth, onMonths, febAction) =>
@@ -124,11 +125,15 @@ object AlarmStateMachine {
         state.copy(nextOccurrence = next.toInstant, recurrenceInstance = state.recurrenceInstance + 1)
     }
     //calculate reminder based on new time
-    reminder.fold(stateWithOccurrenceUpdated) {
-      case Alarm.Reminder(duration, inAdvance, true) if state.reminderInstance.get >= 1 => stateWithOccurrenceUpdated
-      case Alarm.Reminder(duration, inAdvance, firstOccurrenceOnly) =>
-        val reminderTime = if (inAdvance) stateWithOccurrenceUpdated.nextOccurrence.minus(duration) else stateWithOccurrenceUpdated.nextOccurrence.plus(duration)
-        stateWithOccurrenceUpdated.copy(nextReminder = Some(reminderTime))
+    if (stateWithOccurrenceUpdated.state == AlarmState.Ended) {
+      stateWithOccurrenceUpdated.copy(nextReminder = None)
+    } else {
+      reminder.fold(stateWithOccurrenceUpdated) {
+        case Alarm.Reminder(duration, inAdvance, true) if state.reminderInstance.get >= 1 => stateWithOccurrenceUpdated
+        case Alarm.Reminder(duration, inAdvance, firstOccurrenceOnly) =>
+          val reminderTime = if (inAdvance) stateWithOccurrenceUpdated.nextOccurrence.minus(duration) else stateWithOccurrenceUpdated.nextOccurrence.plus(duration)
+          stateWithOccurrenceUpdated.copy(nextReminder = Some(reminderTime))
+      }
     }
   }
   
