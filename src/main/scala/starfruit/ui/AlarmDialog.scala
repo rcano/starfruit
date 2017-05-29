@@ -9,7 +9,7 @@ import javafx.scene.Scene
 import javafx.scene.control._
 import javafx.scene.layout._
 import javafx.scene.paint.Color
-import javafx.scene.text.Font
+import javafx.scene.text._
 import javafx.stage._
 import java.time.{DayOfWeek, Instant, LocalDateTime, Month}
 import starfruit.Alarm
@@ -34,6 +34,14 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
   cancelButton.setCancelButton(true)
   cancelButton.setOnAction(_ => close())
   
+  tryButton.setOnAction { _ =>
+    Utils.newAlert(parent.getScene)(getMessage.get().fold(_.toString, identity),
+                                    alarmPane.action.fontSelectorDialog.foregroundColor.getValue.colorToWeb,
+                                    alarmPane.action.fontSelectorDialog.backgroundColor.getValue.colorToWeb,
+                                    getFont,
+                                    ButtonType.OK).show()
+  }
+  
   setScene(new Scene(
       new BorderPane { $ =>
         setPadding(new Insets(15))
@@ -50,10 +58,10 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
   
   
   setOnShowing(_ => Platform.runLater { () => alarmPane.action.selectedMode.getValue match { //must schedule for later, otherwise we receive the event, request focus, and then event processor continues and ends up assigning focus to the tab
-      case m: alarmPane.action.alarmMode.type => m.message.requestFocus()
-      case m: alarmPane.action.fileContentsMode.type => m.path.requestFocus()
-      case m: alarmPane.action.commandOutputMode.type => m.script.requestFocus()
-    }})
+        case m: alarmPane.action.alarmMode.type => m.message.requestFocus()
+        case m: alarmPane.action.fileContentsMode.type => m.path.requestFocus()
+        case m: alarmPane.action.commandOutputMode.type => m.script.requestFocus()
+      }})
   
   initial foreach { initial =>
     initial.message match {
@@ -67,7 +75,13 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
         alarmPane.action.actionType.getSelectionModel.select("Command output")
         alarmPane.action.commandOutputMode.script.setText(m.script)
     }
-    val font = Font.font(initial.font)
+    val font = {
+      val Array(style, size, font) = initial.font.split(" ", 3)
+      val weight = Option(FontWeight.findByName(style))
+      val posture = Option(FontPosture.findByName(style))
+      weight map (Font.font(font.drop(1).dropRight(1), _, size.toFloat)) orElse (posture map (Font.font(font.drop(1).dropRight(1), _, size.toFloat))) getOrElse
+        Font.font(font.drop(1).dropRight(1), size.toFloat)
+    }
     alarmPane.action.fontSelectorDialog.fontPane.setFont(font)
     alarmPane.action.alarmMode.message.setFont(font)
     alarmPane.action.fontSelectorDialog.foregroundColor.setValue(Color.web(initial.foregroundColor))
@@ -91,9 +105,11 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
     }
     initial.when match {
       case w: Alarm.AtTime =>
+        alarmPane.time.atDateTime.setSelected(true)
         alarmPane.time.atDate.setValue(w.date)
         w.time foreach (alarmPane.time.atTime.setTime)
       case w: Alarm.TimeFromNow =>
+        alarmPane.time.timeFromNow.setSelected(true)
         alarmPane.time.timeFromNowTime.hours.getValueFactory.setValue(w.hours)
         alarmPane.time.timeFromNowTime.minutes.getValueFactory.setValue(w.minutes)
     }
@@ -185,14 +201,23 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
     }
   }
   
+  private def getMessage = alarmPane.action.selectedMode.get match {
+    case m: alarmPane.action.alarmMode.type => Alarm.TextMessage(m.message.getText)
+    case m: alarmPane.action.fileContentsMode.type => Alarm.FileContentsMessage(m.path.getText.toFile)
+    case m: alarmPane.action.commandOutputMode.type => Alarm.ScriptOutputMessage(m.script.getText)
+  }
+  private def getFont = {
+    val styles = alarmPane.action.fontSelectorDialog.fontPane.getFont.getStyle.split(" ").map(_.toUpperCase)
+    val invalidWeights = Seq(FontWeight.LIGHT, FontWeight.EXTRA_BOLD, FontWeight.EXTRA_LIGHT, FontWeight.MEDIUM, FontWeight.SEMI_BOLD)
+    val weight = styles.map(FontWeight.findByName).filter(w => w != null && !invalidWeights.contains(w)).headOption.map(_.toString) //I have to remove invalid weights that CSS don't support
+    val style = styles.collectFirst { case "REGULAR" => "normal"; case i@"ITALIC" => "italic" }
+    
+    (weight.orElse(style).getOrElse("normal") + " " + alarmPane.action.fontSelectorDialog.fontPane.getFont.getSize + " \"" + alarmPane.action.fontSelectorDialog.fontPane.getFont.getFamily + "\"").toLowerCase
+  }
   def getAlarm: Alarm = {
     Alarm(
-      message = alarmPane.action.selectedMode.get match {
-        case m: alarmPane.action.alarmMode.type => Alarm.TextMessage(m.message.getText)
-        case m: alarmPane.action.fileContentsMode.type => Alarm.FileContentsMessage(m.path.getText.toFile)
-        case m: alarmPane.action.commandOutputMode.type => Alarm.ScriptOutputMessage(m.script.getText)
-      },
-      font = alarmPane.action.fontSelectorDialog.fontPane.getFont.getStyle,
+      message = getMessage,
+      font = getFont,
       foregroundColor = alarmPane.action.fontSelectorDialog.foregroundColor.getValue.colorToWeb,
       backgroundColor = alarmPane.action.fontSelectorDialog.backgroundColor.getValue.colorToWeb,
       sound = alarmPane.action.selectedSound.get match {
