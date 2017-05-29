@@ -6,7 +6,6 @@ fork := true
 
 libraryDependencies ++= Seq(
   "com.github.pathikrit" %% "better-files" % "2.17.1",
-  "org.mnode.ical4j" % "ical4j" % "1.0.2",
   "org.controlsfx" % "controlsfx" % "8.40.12",
   "com.beachape" %% "enumeratum" % "1.5.10",
   "com.github.benhutchison" %% "prickle" % "1.1.13",
