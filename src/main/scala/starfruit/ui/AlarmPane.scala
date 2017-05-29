@@ -1,5 +1,6 @@
 package starfruit.ui
 
+import better.files._
 import java.time.LocalDate
 import javafx.beans.binding.BooleanBinding
 import javafx.beans.property.Property
@@ -8,8 +9,10 @@ import javafx.css.CssMetaData
 import javafx.geometry._
 import javafx.scene.control._
 import javafx.scene.layout._
+import javafx.scene.media.AudioClip
 import javafx.scene.paint.Color
 import javafx.scene.text.Font
+import javafx.stage.FileChooser
 import javafx.stage.Popup
 import org.controlsfx.dialog.FontSelectorDialog
 
@@ -34,6 +37,12 @@ class AlarmPane extends VBox { $ =>
     object fileContentsMode extends HBox with AlarmType { $ =>
       val path = $ \ new TextField().modify(HBox.setHgrow(_, Priority.ALWAYS))
       val browseButton = $ \ new Button("🗁").modify(_.prefHeightProperty.bind(path.heightProperty))
+      
+      browseButton.setOnAction { _ =>
+        val chooser = new FileChooser().modify(_.setTitle("Select file"))
+        if (path.getText != null && path.getText.nonEmpty) chooser.setInitialFileName(path.getText)
+        Option(chooser.showOpenDialog(getScene.getWindow)) foreach (f => path.setText(f.getAbsolutePath))
+      }
     }
     object commandOutputMode extends VBox with AlarmType { $ =>
       setSpacing(10)
@@ -77,6 +86,24 @@ class AlarmPane extends VBox { $ =>
                                                   _.setShowTickLabels(true), _.setShowTickMarks(true))
       
       $ \ new TitledVBox("Volume", spacing = 10) \ volume
+      
+      testButton.disableProperty bind path.textProperty.map(t => t == null || t.isEmpty)
+      browseButton.setOnAction { _ =>
+        val popup = getScene.getWindow.asInstanceOf[Popup]
+        val chooser = new FileChooser().modify(_.setTitle("Select audio file"),
+                                               _.getExtensionFilters.addAll(new FileChooser.ExtensionFilter("Audio Files", "*.wav", "*.mp3", "*.aac")))
+        if (path.getText != null && path.getText.nonEmpty) chooser.setInitialFileName(path.getText)
+        Option(chooser.showOpenDialog(AlarmPane.this.getScene.getWindow)) foreach (f => path.setText(f.getAbsolutePath))
+        popup.show(AlarmPane.this.getScene.getWindow)
+      }
+      var lastClip: Option[AudioClip] = None
+      testButton.setOnAction { _ => 
+        lastClip foreach (_.stop)
+        val clip = new AudioClip(path.getText.toFile.uri.toString)
+        lastClip = Some(clip)
+        clip.setVolume(volume.getValue / 100.0)
+        clip.play()
+      }
     }
     
     val selectedSound = new SimpleObjectProperty[SoundType](noSound)
@@ -104,7 +131,7 @@ class AlarmPane extends VBox { $ =>
       val fontPane = getDialogPane.getContent.asInstanceOf[GridPane { def getFont(): Font; def setFont(f: Font): Unit }].modify(
         p => p.setPrefSize(BaseApplication.defaultFont.getSize * p.getPrefWidth / 13,
                            BaseApplication.defaultFont.getSize * p.getPrefHeight / 13),
-            _.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE))
+        _.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE))
       val foregroundColor = new ColorPicker(Color.BLACK)
       val backgroundColor = new ColorPicker(Color.LAVENDERBLUSH)
       getDialogPane setContent new BorderPane { $ =>
