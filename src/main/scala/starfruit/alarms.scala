@@ -31,7 +31,7 @@ object Alarm {
   }
   case class TextMessage(message: String) extends MessageSource { def get = Success(message) }
   case class FileContentsMessage(path: File) extends MessageSource { def get = Try(path.lineIterator.mkString("\n")) }
-  case class ScriptOutputMessage(script: String) extends MessageSource { def get = Try(Seq("bash", "-c", "script").!!) }
+  case class ScriptOutputMessage(script: String) extends MessageSource { def get = Try(Seq("bash", "-c", script).!!) }
   
   sealed trait Sound
   case object NoSound extends Sound
