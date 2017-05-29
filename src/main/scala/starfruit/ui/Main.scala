@@ -1,6 +1,7 @@
 package starfruit
 package ui
 
+import javafx.scene.text.Font
 import language.reflectiveCalls
 import java.time.{LocalDateTime, ZoneId, Instant, Clock, Duration}
 import javafx.application.{Application, Platform}
@@ -126,12 +127,6 @@ class Main extends BaseApplication {
   
   private val showingAlarms = collection.mutable.Map[Alarm, Alert]()
   
-  private def newAlert(msg: String, buttons: ButtonType*) = {
-    val res = new Alert(Alert.AlertType.INFORMATION, msg, buttons:_*)
-    res.getDialogPane.getScene.getStylesheets.addAll(sceneRoot.getScene.getStylesheets)
-    res
-  }
-  
   val wallClock = Clock.tickMinutes(ZoneId.systemDefault)
   val checkerThread = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(runnable => new Thread(null, runnable, "Clock", 1024*100))
   checkerThread.scheduleAtFixedRate(() => {
@@ -145,7 +140,8 @@ class Main extends BaseApplication {
           case AlarmStateMachine.NotifyAlarm(next) =>
             Platform.runLater { () =>
               val message = next.alarm.message.get()
-              val alert = newAlert(message.fold(_.toString, identity), ButtonType.OK)
+              val alert = Utils.newAlert(sceneRoot.getScene)(message.fold(_.toString, identity), next.alarm.foregroundColor,
+                                   next.alarm.backgroundColor, next.alarm.font, ButtonType.OK)
               showingAlarms(next.alarm) = alert
               alert.showAndWait.ifPresent(_ => 
                 //must run this later, to ensure the alarms where properly updated
@@ -157,13 +153,18 @@ class Main extends BaseApplication {
             }
             next
           case AlarmStateMachine.NotifyReminder(next) =>
-            Platform.runLater(() => newAlert("Reminder for:\n" + next.alarm.message.get().fold(_.toString, identity) + 
-                                              "\nocurring in " + Duration.between(now, next.nextOccurrence))) 
+            Platform.runLater(() => Utils.newAlert(sceneRoot.getScene)("Reminder for:\n" + next.alarm.message.get().fold(_.toString, identity) + 
+                                             "\nocurring in " + Duration.between(now, next.nextOccurrence), next.alarm.foregroundColor,
+                                             next.alarm.backgroundColor, next.alarm.font, ButtonType.OK).show())
             next
           case AlarmStateMachine.AutoCloseAlarmNotification(next) =>
             Platform.runLater(() => showingAlarms.remove(next.alarm) foreach (_.close()))
             AlarmStateMachine.advanceAlarm(next.copy(state = AlarmState.Active))
         }}
-      Platform.runLater(() => alarms.setAll(newStates.filter(_.state != AlarmState.Ended):_*))
-    }, 0, 20, scala.concurrent.duration.SECONDS)
+      Platform.runLater { () =>
+        val idx = sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex
+        alarms.setAll(newStates.filter(_.state != AlarmState.Ended):_*)
+        sceneRoot.alarmsTable.getSelectionModel.select(idx)
+      }
+    }, 0, 1, scala.concurrent.duration.SECONDS)
 }
