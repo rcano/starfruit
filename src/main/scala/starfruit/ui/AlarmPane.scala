@@ -98,11 +98,17 @@ class AlarmPane extends VBox { $ =>
       }
       var lastClip: Option[AudioClip] = None
       testButton.setOnAction { _ => 
-        lastClip foreach (_.stop)
-        val clip = new AudioClip(path.getText.toFile.uri.toString)
-        lastClip = Some(clip)
-        clip.setVolume(volume.getValue / 100.0)
-        clip.play()
+        if (!path.getText.toFile.exists) {
+          val popup = getScene.getWindow.asInstanceOf[Popup]
+          new Alert(Alert.AlertType.ERROR, "File doesn't exists", ButtonType.OK).showAndWait()
+          popup.show(AlarmPane.this.getScene.getWindow)
+        } else {
+          lastClip foreach (_.stop)
+          val clip = new AudioClip(path.getText.toFile.uri.toString)
+          lastClip = Some(clip)
+          clip.setVolume(volume.getValue / 100.0)
+          clip.play()
+        }
       }
     }
     
