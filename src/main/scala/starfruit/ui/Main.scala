@@ -6,20 +6,32 @@ import better.files._
 import java.time.{LocalDateTime, ZoneId, Clock, Duration}
 import javafx.application.{Application, Platform}
 import javafx.scene.control._
+import javafx.scene.image.Image
 import javafx.scene.paint.Color
+import javafx.stage.Stage
 import scala.collection.JavaConverters._
 import scala.util._
 
 import prickle._, AlarmPicklers._
 
 object Main {
+  val instanceFile = File.home / ".starfruit.instance"
   def main(args: Array[String]): Unit = {
     System.setProperty("prism.lcdtext", "false")
     System.setProperty("prism.text", "t2k")
-    Application.launch(classOf[Main], args:_*)
+    if (!util.InstanceDetector.notifyInstance(instanceFile)) Application.launch(classOf[Main], args:_*) else sys.exit(0)
   }
 }
 class Main extends BaseApplication {
+  Platform.setImplicitExit(false)
+  util.InstanceDetector.setupInstance(Main.instanceFile) { 
+    println("got pinged")
+    Platform.runLater { () => 
+      println("showing panel?")
+      sceneRoot.getScene.getWindow.asInstanceOf[Stage].show()
+    }
+  }
+  
   val sceneRoot = new MainWindow()
   implicit val pconfig = PConfig.Default.copy(areSharedObjectsSupported = false)
 
@@ -102,6 +114,12 @@ class Main extends BaseApplication {
   sceneRoot.toolBar.undoButton.setOnAction(_ => undo())
   sceneRoot.toolBar.redoButton.setOnAction(_ => redo())
   
+  sceneRoot.menuBar.fileMenu.exit.setOnAction(_ => Platform.exit())
+  
+  override def extraInitialize(stage) = {
+    stage.getIcons.add(new Image("/starfruit.png"))
+  }
+  
   /********************************
    * Definition of actions
    *******************************/
@@ -146,15 +164,15 @@ class Main extends BaseApplication {
   
   private val showingAlarms = collection.mutable.Map[Alarm, Alert]()
   val wallClock = Clock.tickMinutes(ZoneId.systemDefault)
-  val checkerThread = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(runnable => new Thread(null, runnable, "Clock", 1024*100))
+  val checkerThread = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(runnable => new Thread(null, runnable, "Clock", 1024*100).modify(_.setDaemon(true)))
   checkerThread.scheduleAtFixedRate(() => {
       val now = wallClock.instant()
       alarms.synchronized {
         var changesDetected = false
         val newStates = alarms.asScala.map { state =>
-          println("checking " + state)
+//          println("checking " + state)
           val checkResult = AlarmStateMachine.checkAlarm(now, state)
-          println("  ===> " + checkResult)
+//          println("  ===> " + checkResult)
           checkResult match {
             case AlarmStateMachine.KeepState => state
             case AlarmStateMachine.NotifyAlarm(next) =>
@@ -193,7 +211,7 @@ class Main extends BaseApplication {
         //must run this later, to ensure the alarms where properly updated
         Platform.runLater { () =>
           val next2 = AlarmStateMachine.advanceAlarm(state.copy(state = AlarmState.Active))
-          println("Advancing alarm to " + next2)
+//          println("Advancing alarm to " + next2)
           if (next2.state == AlarmState.Ended) alarms.remove(state)
           else alarms.set(alarms.indexOf(state), next2)
         })
