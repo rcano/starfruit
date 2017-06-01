@@ -106,7 +106,7 @@ object AlarmStateMachine {
         
           case Alarm.HourMinutelyRecurrence(h, m) => 
             val next = Iterator.iterate(state.nextOccurrence)(_.plus(h, ChronoUnit.HOURS).plus(m, ChronoUnit.MINUTES)).filterNot(i =>
-              exceptionOnDates contains ZonedDateTime.ofInstant(i, ZoneId.systemDefault).toLocalDate).next
+              exceptionOnDates contains ZonedDateTime.ofInstant(i, ZoneId.systemDefault).toLocalDate).filter(_ > state.nextOccurrence).next
             state.copy(nextOccurrence = next, recurrenceInstance = state.recurrenceInstance + 1, subrecurrenceInstance = 0)
         
           case Alarm.DailyRecurrence(every, onDays) =>
