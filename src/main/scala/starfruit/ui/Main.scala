@@ -3,8 +3,7 @@ package ui
 
 import language.reflectiveCalls
 import better.files._
-import java.time.{LocalDateTime, ZoneId, Instant, Clock, Duration}
-import javafx.scene.text.Font
+import java.time.{LocalDateTime, ZoneId, Clock, Duration}
 import javafx.application.{Application, Platform}
 import javafx.scene.control._
 import javafx.scene.paint.Color
