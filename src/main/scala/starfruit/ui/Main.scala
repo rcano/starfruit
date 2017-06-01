@@ -99,16 +99,16 @@ class Main extends BaseApplication {
     def undo(): Unit
   }
   case class NewAlarm(alarm: Alarm) extends Action {
-    def `do`() = alarms.add(AlarmState(alarm, AlarmState.Active, wallClock.instant))
-    def undo() = alarms.remove(alarm)
+    def `do`() = alarms.synchronized { alarms.add(AlarmState(alarm, AlarmState.Active, wallClock.instant)) }
+    def undo() = alarms.synchronized { alarms.removeIf(_.alarm eq alarm) }
   }
   case class DeleteAlarm(alarm: AlarmState) extends Action {
-    def `do`() = alarms.remove(alarm)
-    def undo() = alarms.add(alarm)
+    def `do`() = alarms.synchronized { alarms.remove(alarm) }
+    def undo() = alarms.synchronized { alarms.add(alarm) }
   }
   case class EditAlarm(old: AlarmState, updated: Alarm) extends Action {
-    def `do`() = alarms.set(alarms.indexOf(old), AlarmState(updated, AlarmState.Active, wallClock.instant))
-    def undo() = alarms.set(alarms.indexOf(updated), old)
+    def `do`() = alarms.synchronized { alarms.set(alarms.indexOf(old), AlarmState(updated, AlarmState.Active, wallClock.instant)) }
+    def undo() = alarms.synchronized { alarms.set(alarms.asScala.indexWhere(_.alarm eq updated), old) }
   }
   
   val undoQueue = collection.mutable.Stack.empty[Action]
@@ -131,40 +131,42 @@ class Main extends BaseApplication {
   val checkerThread = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(runnable => new Thread(null, runnable, "Clock", 1024*100))
   checkerThread.scheduleAtFixedRate(() => {
       val now = wallClock.instant()
-      val newStates = alarms.asScala.map { state =>
-        println("checking " + state)
-        val checkResult = AlarmStateMachine.checkAlarm(now, state)
-        println("  ===> " + checkResult)
-        checkResult match {
-          case AlarmStateMachine.KeepState => state
-          case AlarmStateMachine.NotifyAlarm(next) =>
-            Platform.runLater { () =>
-              val message = next.alarm.message.get()
-              val alert = Utils.newAlert(sceneRoot.getScene)(message.fold(_.toString, identity), next.alarm.foregroundColor,
-                                   next.alarm.backgroundColor, next.alarm.font, ButtonType.OK)
-              showingAlarms(next.alarm) = alert
-              alert.showAndWait.ifPresent(_ => 
-                //must run this later, to ensure the alarms where properly updated
-                Platform.runLater { () =>
-                  val next2 = AlarmStateMachine.advanceAlarm(next.copy(state = AlarmState.Active))
-                  if (next2.state == AlarmState.Ended) alarms.remove(next)
-                  else alarms.set(alarms.indexOf(next), next2)
-                })
-            }
-            next
-          case AlarmStateMachine.NotifyReminder(next) =>
-            Platform.runLater(() => Utils.newAlert(sceneRoot.getScene)("Reminder for:\n" + next.alarm.message.get().fold(_.toString, identity) + 
-                                             "\nocurring in " + Duration.between(now, next.nextOccurrence), next.alarm.foregroundColor,
-                                             next.alarm.backgroundColor, next.alarm.font, ButtonType.OK).show())
-            next
-          case AlarmStateMachine.AutoCloseAlarmNotification(next) =>
-            Platform.runLater(() => showingAlarms.remove(next.alarm) foreach (_.close()))
-            AlarmStateMachine.advanceAlarm(next.copy(state = AlarmState.Active))
-        }}
-      Platform.runLater { () =>
-        val idx = sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex
-        alarms.setAll(newStates.filter(_.state != AlarmState.Ended):_*)
-        sceneRoot.alarmsTable.getSelectionModel.select(idx)
+      alarms.synchronized {
+        val newStates = alarms.asScala.map { state =>
+          println("checking " + state)
+          val checkResult = AlarmStateMachine.checkAlarm(now, state)
+          println("  ===> " + checkResult)
+          checkResult match {
+            case AlarmStateMachine.KeepState => state
+            case AlarmStateMachine.NotifyAlarm(next) =>
+              Platform.runLater { () =>
+                val message = next.alarm.message.get()
+                val alert = Utils.newAlert(sceneRoot.getScene)(message.fold(_.toString, identity), next.alarm.foregroundColor,
+                                                               next.alarm.backgroundColor, next.alarm.font, ButtonType.OK)
+                showingAlarms(next.alarm) = alert
+                alert.showAndWait.ifPresent(_ => 
+                  //must run this later, to ensure the alarms where properly updated
+                  Platform.runLater { () =>
+                    val next2 = AlarmStateMachine.advanceAlarm(next.copy(state = AlarmState.Active))
+                    if (next2.state == AlarmState.Ended) alarms.remove(next)
+                    else alarms.set(alarms.indexOf(next), next2)
+                  })
+              }
+              next
+            case AlarmStateMachine.NotifyReminder(next) =>
+              Platform.runLater(() => Utils.newAlert(sceneRoot.getScene)("Reminder for:\n" + next.alarm.message.get().fold(_.toString, identity) + 
+                                                                         "\nocurring in " + Duration.between(now, next.nextOccurrence), next.alarm.foregroundColor,
+                                                                         next.alarm.backgroundColor, next.alarm.font, ButtonType.OK).show())
+              next
+            case AlarmStateMachine.AutoCloseAlarmNotification(next) =>
+              Platform.runLater(() => showingAlarms.remove(next.alarm) foreach (_.close()))
+              AlarmStateMachine.advanceAlarm(next.copy(state = AlarmState.Active))
+          }}
+        Platform.runLater { () =>
+          val idx = sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex
+          alarms.setAll(newStates.filter(_.state != AlarmState.Ended):_*)
+          sceneRoot.alarmsTable.getSelectionModel.select(idx)
+        }
       }
     }, 0, 1, scala.concurrent.duration.SECONDS)
 }
