@@ -4,6 +4,7 @@ import language.implicitConversions
 
 import java.time._
 import java.time.temporal.{ChronoField, ChronoUnit, TemporalAdjusters}
+import prickle._
 import scala.collection.JavaConverters._
 
 case class AlarmState(alarm: Alarm, state: AlarmState.State, started: Instant, nextOccurrence: Instant, recurrenceInstance: Int,
@@ -24,6 +25,11 @@ object AlarmState {
   case object Active extends State
   case object Showing extends State
   case object Ended extends State
+  
+  import AlarmPicklers._
+  implicit val statePickler = CompositePickler[State].concreteType[Active.type].concreteType[Showing.type].concreteType[Ended.type]
+  implicit val alarmStatePickler = implicitly[Pickler[AlarmState]]
+  implicit val alarmStateUnpickler = implicitly[Unpickler[AlarmState]]
 }
 
 object AlarmStateMachine {
