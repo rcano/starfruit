@@ -15,11 +15,19 @@ libraryDependencies ++= Seq(
 )
 
 mainClass in reStart := Some("starfruit.ui.DevAppReloader")
+mainClass in assembly := Some("starfruit.ui.Main")
 
 assemblyShadeRules in assembly := Seq(
   ShadeRule.keep("starfruit.**").inAll,
   ShadeRule.keep("scala.Predef$").inAll,
   ShadeRule.keep("better.files.File$").inAll,
   ShadeRule.keep("scala.io.Codec$").inAll,
-  ShadeRule.keep("scala.collection.mutable.MultiMap").inAll
+  ShadeRule.keep("scala.collection.mutable.MultiMap").inAll,
+  ShadeRule.keep("scala.collection.mutable.Stack").inAll,
+  ShadeRule.keep("scala.runtime.AbstractFunction2").inAll,
+  ShadeRule.keep("scala.runtime.StructuralCallSite").inAll,
+  ShadeRule.keep("scala.runtime.java8.*").inAll,
+  ShadeRule.keep("prickle.*").inAll,
+  ShadeRule.keep("microjson.*").inAll,
+  ShadeRule.keep("org.controlsfx.dialog.FontSelectorDialog").inAll
 )
