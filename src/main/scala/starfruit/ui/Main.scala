@@ -261,6 +261,7 @@ class Main extends BaseApplication {
   
   def showAlarm(state: AlarmState): Unit = {
     Platform.runLater { () =>
+      val now = wallClock.instant()
       val message = state.alarm.message.get()
       val alert = Utils.newAlert(sceneRoot.getScene)(message.fold(_.toString, identity), state.alarm.foregroundColor,
                                                      state.alarm.backgroundColor, state.alarm.font, ButtonType.OK)
@@ -268,8 +269,10 @@ class Main extends BaseApplication {
       alert.showAndWait.ifPresent(_ => 
         //must run this later, to ensure the alarms where properly updated
         Platform.runLater { () =>
-          val next2 = AlarmStateMachine.advanceAlarm(state.copy(state = AlarmState.Active))
-//          println("Advancing alarm to " + next2)
+          val futureInstances = Iterator.iterate(AlarmStateMachine.advanceAlarm(state.copy(state = AlarmState.Active)))(
+                AlarmStateMachine.advanceAlarm).filter(s => s.nextOccurrence.isAfter(now) || s.state == AlarmState.Ended)
+          val next2 = futureInstances.next()
+          println("Advancing alarm to " + next2)
           if (next2.state == AlarmState.Ended) alarms.remove(state)
           else alarms.set(alarms.indexOf(state), next2)
         })
