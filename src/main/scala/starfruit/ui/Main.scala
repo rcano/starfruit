@@ -4,17 +4,21 @@ package ui
 import language.reflectiveCalls
 import better.files._
 import java.time.{LocalDateTime, ZoneId, Clock, Duration}
+import javafx.animation.FadeTransition
 import javafx.application.{Application, Platform}
 import javafx.collections.transformation.SortedList
 import javafx.scene.control._
 import javafx.scene.image.Image
+import javafx.scene.input.{KeyCode, KeyCombination, KeyEvent}
+import javafx.scene.layout._
 import javafx.scene.paint.Color
 import javafx.stage.FileChooser
 import javafx.stage.Stage
+import org.controlsfx.validation.ValidationMessage
+import org.controlsfx.validation.decoration.GraphicValidationDecoration
+import prickle._, AlarmPicklers._
 import scala.collection.JavaConverters._
 import scala.util._
-
-import prickle._, AlarmPicklers._
 
 object Main {
   val instanceFile = File.home / ".starfruit.instance"
@@ -124,8 +128,50 @@ class Main extends BaseApplication {
   }
   sceneRoot.menuBar.fileMenu.exit.setOnAction(_ => Platform.exit())
   
+  val graphicsDecorator = new GraphicValidationDecoration()
+  sceneRoot.findTextField.textProperty.addListener((_, _,_) => graphicsDecorator.removeDecorations(sceneRoot.findTextField))
+  sceneRoot.findTextField.setOnAction { _ =>
+    val text = sceneRoot.findTextField.getText
+    sceneRoot.alarmsTable.getItems.asScala.indexWhere(_._5.toLowerCase contains text.toLowerCase) match {
+      case -1 => graphicsDecorator.applyValidationDecoration(ValidationMessage.error(sceneRoot.findTextField, "Not found"))
+      case other => sceneRoot.alarmsTable.getSelectionModel.select(other)
+    }
+  }
+  private def findNextOrPrev(nextOrPrev: Boolean) {
+    val text = sceneRoot.findTextField.getText
+    if (text.nonEmpty) {
+      val selected = sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex.max(0)
+      val nextIdx = if (nextOrPrev)
+        sceneRoot.alarmsTable.getItems.asScala.indexWhere(_._5.toLowerCase contains text.toLowerCase, selected + 1)  
+      else 
+        sceneRoot.alarmsTable.getItems.asScala.lastIndexWhere(_._5.toLowerCase contains text.toLowerCase, selected - 1)  
+      nextIdx match {
+        case -1 => //do nothing in this case
+        case other => sceneRoot.alarmsTable.getSelectionModel.select(other)
+      }
+    }
+  }
+  sceneRoot.findNext.setOnAction(_ => findNextOrPrev(true))
+  sceneRoot.findPrevious.setOnAction(_ => findNextOrPrev(false))
+  
   override def extraInitialize(stage) = {
     stage.getIcons.add(new Image("/starfruit.png"))
+    stage.getScene.getAccelerators.put(KeyCombination.valueOf("Shortcut+F"), () => sceneRoot.toolBar.findButton.fire())
+    stage.getScene.getAccelerators.put(KeyCombination.valueOf("F3"), { () =>
+        sceneRoot.toolBar.findButton.fire()
+        sceneRoot.findNext.fire()
+      })
+    stage.getScene.getAccelerators.put(KeyCombination.valueOf("Shift+F3"), { () =>
+        sceneRoot.toolBar.findButton.fire()
+        sceneRoot.findPrevious.fire()
+      })
+    //need to prevet the findTextField from capturing these keys
+    sceneRoot.findTextField.addEventHandler(KeyEvent.KEY_PRESSED, { evt: KeyEvent =>
+        if (evt.getCode == KeyCode.F3) {
+          if (evt.isShiftDown) sceneRoot.findPrevious.fire()
+          else sceneRoot.findNext.fire()
+        }
+      })
   }
   
   /********************************
