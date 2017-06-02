@@ -199,7 +199,7 @@ class Main extends BaseApplication {
           }
         }
       }
-    }, 0, 1, scala.concurrent.duration.SECONDS)
+    }, 0, 5, scala.concurrent.duration.SECONDS)
   
   def showAlarm(state: AlarmState): Unit = {
     Platform.runLater { () =>
