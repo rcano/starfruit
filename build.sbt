@@ -31,5 +31,7 @@ assemblyShadeRules in assembly := Seq(
   ShadeRule.keep("microjson.*").inAll,
   ShadeRule.keep("org.controlsfx.dialog.FontSelectorDialog").inAll,
   ShadeRule.keep("org.controlsfx.validation.decoration.GraphicValidationDecoration").inAll,
-  ShadeRule.keep("org.controlsfx.control.HiddenSidesPane").inAll
+  ShadeRule.keep("org.controlsfx.control.HiddenSidesPane").inAll,
+  ShadeRule.keep("fastparse.**").inAll,
+  ShadeRule.keep("sourcecode.**").inAll
 )
