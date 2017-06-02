@@ -101,7 +101,7 @@ class MainWindow extends BorderPane { $ =>
     }
     val messageCol = new TableColumn[TableColumns, String]("Message, File or Command") {
       setSortable(true)
-      setCellValueFactory { cellDataFeatures => new ReadOnlyObjectWrapper(cellDataFeatures.getValue._5) }
+      setCellValueFactory { cellDataFeatures => new ReadOnlyObjectWrapper(cellDataFeatures.getValue._5.replaceAll("\r\n|\n", " ")) }
     }
     messageCol.setPrefWidth(400)
     
