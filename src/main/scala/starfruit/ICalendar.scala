@@ -15,7 +15,7 @@ object ICalendar {
   
   lazy val element: Parser[Element] = P( section | entry )
   lazy val section = P( "BEGIN:" ~ name.! flatMap (name => nl ~ element.rep ~ s"END:$name" ~ nl map (elems => Section(name, elems))) )
-  lazy val entry = P( !"END" ~ name.! ~ (";" ~ name ~ "=" ~ name).!.? ~ ":" ~ (" \r\n " | !nl ~ AnyChar).rep.! ~ nl ).map((Entry.apply _).tupled)
+  lazy val entry = P( !"END" ~ name.! ~ (";" ~ name ~ "=" ~ name).!.? ~ ":" ~ (P("\r\n ").map(p => ' ') | !nl ~ AnyChar).rep.! ~ nl ).map((Entry.apply _).tupled)
   lazy val name = P( CharPred { case ';' | ':' | '=' | '\r' | '\n' => false; case _ => true }.rep(min=1) )
   lazy val nl = P("\r\n" | "\n")
   
@@ -31,7 +31,7 @@ object ICalendar {
               s.value.split("\\\\;") match {
                 case Array(back, fore, font) =>
                   val Array(fontName, size, _*) = font.split("\\\\,")
-                  (s"normal $size ${fontName.replace(" \r\n ", " ")}", fore, back)
+                  (s"normal $size $fontName", fore, back)
                 case Array(back, fore) => ("", fore, back)
               }
             }
@@ -52,6 +52,8 @@ object ICalendar {
               val end = props.get("COUNT").map(i => Left(i.toInt)).orElse(
                 props.get("UNTIL").map(date => Right(LocalDateTime.parse(date, gmtDateParser))))
               
+              println("processing " + props)
+              
               def day(d: String) = d match { case "MO" => DayOfWeek.MONDAY;  case "TU" => DayOfWeek.TUESDAY; case "WE" => DayOfWeek.WEDNESDAY; case "TH" => DayOfWeek.THURSDAY; case "FR" => DayOfWeek.FRIDAY; case "SA" => DayOfWeek.SATURDAY; case "SU" => DayOfWeek.SUNDAY }
               (props("FREQ") match {
                   case "MINUTELY" => 
@@ -61,13 +63,13 @@ object ICalendar {
                   case "DAILY" =>
                     val every = props.get("INTERVAL").map(_.toInt).getOrElse(1)
                     val days = EnumSet.noneOf(classOf[DayOfWeek])
-                    props("BYDAY").split(",").map(day) foreach days.add
+                    props.get("BYDAY").fold[Unit](days addAll EnumSet.allOf(classOf[DayOfWeek]))(_.split(",").map(day) foreach days.add)
                     Alarm.DailyRecurrence(every, days)
                   
                   case "WEEKLY" =>
                     val weeks = props.get("INTERVAL").map(_.toInt).getOrElse(1)
                     val days = EnumSet.noneOf(classOf[DayOfWeek])
-                    props("BYDAY").split(",").map(day) foreach days.add
+                    props.get("BYDAY").fold[Unit](days addAll EnumSet.allOf(classOf[DayOfWeek]))(_.split(",").map(day) foreach days.add)
                     Alarm.WeeklyRecurrence(weeks, days)
                   
                   case "MONTHLY" =>
