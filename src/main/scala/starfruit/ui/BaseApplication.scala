@@ -44,9 +44,9 @@ trait BaseApplication extends Application {
       }
     }
     
-    extraInitialize(stage)
     stage.setScene(scene)
     stage.sizeToScene()
+    extraInitialize(stage)
     stage.show()
   }
   def extraInitialize(stage: Stage): Unit = {}
