@@ -88,7 +88,7 @@ object ICalendar {
                 }) -> end
             }
             val alarm = Alarm(
-              Alarm.TextMessage(valarm.field[Entry]("DESCRIPTION").get.value),
+              Alarm.TextMessage(valarm.field[Entry]("DESCRIPTION").get.value.replace("\\n", "\n").replace("\\,", ",")),
               font,
               foreground,
               background,
