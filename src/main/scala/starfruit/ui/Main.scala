@@ -5,6 +5,7 @@ import language.reflectiveCalls
 import better.files._
 import java.time.{LocalDateTime, ZoneId, Clock, Duration}
 import javafx.application.{Application, Platform}
+import javafx.collections.transformation.SortedList
 import javafx.scene.control._
 import javafx.scene.image.Image
 import javafx.scene.paint.Color
@@ -38,7 +39,8 @@ class Main extends BaseApplication {
 
   val alarmsFile = File.home / ".starfruit-alarms"
   val alarms = javafx.collections.FXCollections.observableArrayList[AlarmState]()
-  sceneRoot.alarmsTable.setItems(new FxCollectionsExtra.ObservableView(alarms)({ s =>
+  
+  val alarmsTableSortedList = new SortedList(new FxCollectionsExtra.ObservableView(alarms)({ s =>
         val recString = s.alarm.recurrence match {
           case Alarm.NoRecurrence => "no recurrence"
           case Alarm.HourMinutelyRecurrence(h, m) => s"${h}H ${m}M"
@@ -66,6 +68,8 @@ class Main extends BaseApplication {
         }
         (LocalDateTime.ofInstant(s.nextOccurrence, ZoneId.systemDefault), recString, Color.web(s.alarm.backgroundColor), "🖅", msg)
       }))
+  sceneRoot.alarmsTable.setItems(alarmsTableSortedList)
+  alarmsTableSortedList.comparatorProperty bind sceneRoot.alarmsTable.comparatorProperty
   
   /*************************************
    * UI tunning
