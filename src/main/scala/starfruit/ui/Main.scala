@@ -8,6 +8,7 @@ import javafx.application.{Application, Platform}
 import javafx.scene.control._
 import javafx.scene.image.Image
 import javafx.scene.paint.Color
+import javafx.stage.FileChooser
 import javafx.stage.Stage
 import scala.collection.JavaConverters._
 import scala.util._
@@ -77,14 +78,7 @@ class Main extends BaseApplication {
       dialog.close()
     }
     dialog.showAndWait()
-//    println("Got alarm\n" + resAlarm)
-    resAlarm foreach { alarm =>
-//      val pickled = Pickle.intoString(alarm)
-//      println(pickled)
-//      val rehydrated = Unpickle[Alarm].fromString(pickled)
-//      println("Rehydrated: " + rehydrated)
-      `do`(NewAlarm(alarm))
-    }
+    resAlarm foreach { alarm => `do`(NewAlarm(alarm)) }
   }
   Seq(sceneRoot.toolBar.copyButton, sceneRoot.toolBar.editButton, sceneRoot.toolBar.deleteButton) foreach (
     _.disableProperty bind sceneRoot.alarmsTable.getSelectionModel.selectedItemProperty.isNull)
@@ -114,6 +108,16 @@ class Main extends BaseApplication {
   sceneRoot.toolBar.undoButton.setOnAction(_ => undo())
   sceneRoot.toolBar.redoButton.setOnAction(_ => redo())
   
+  sceneRoot.menuBar.fileMenu.importAlarms.setOnAction { _ =>
+    val fileChooser = new FileChooser().modify(_.setTitle("Open calendar file"),
+                                               _.getExtensionFilters.add(new FileChooser.ExtensionFilter("Calendar File", "*.ics")))
+    Option(fileChooser.showOpenDialog(sceneRoot.getScene.getWindow)).foreach { file =>
+      ICalendar.parse(file.toScala.contentAsString) match {
+        case Success(alarms) => `do`(ImportAlarms(alarms))
+        case Failure(ex) => new Alert(Alert.AlertType.ERROR, "Something went wrong:\n" + ex, ButtonType.OK).modify(_.setResizable(true)).show()
+      }
+    }
+  }
   sceneRoot.menuBar.fileMenu.exit.setOnAction(_ => Platform.exit())
   
   override def extraInitialize(stage) = {
@@ -138,6 +142,10 @@ class Main extends BaseApplication {
   case class EditAlarm(old: AlarmState, updated: Alarm) extends Action {
     def `do`() = alarms.synchronized { alarms.set(alarms.indexOf(old), AlarmState(updated, AlarmState.Active, wallClock.instant)) }
     def undo() = alarms.synchronized { alarms.set(alarms.asScala.indexWhere(_.alarm eq updated), old) }
+  }
+  case class ImportAlarms(importedAlarms: Seq[AlarmState]) extends Action {
+    def `do`() = alarms.synchronized { alarms.addAll(importedAlarms:_*) }
+    def undo() = alarms.synchronized { importedAlarms foreach (ia => alarms.removeIf(_.alarm == ia.alarm)) }
   }
   
   val undoQueue = collection.mutable.Stack.empty[Action]
