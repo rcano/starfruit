@@ -29,5 +29,7 @@ assemblyShadeRules in assembly := Seq(
   ShadeRule.keep("scala.runtime.java8.*").inAll,
   ShadeRule.keep("prickle.*").inAll,
   ShadeRule.keep("microjson.*").inAll,
-  ShadeRule.keep("org.controlsfx.dialog.FontSelectorDialog").inAll
+  ShadeRule.keep("org.controlsfx.dialog.FontSelectorDialog").inAll,
+  ShadeRule.keep("org.controlsfx.validation.decoration.GraphicValidationDecoration").inAll,
+  ShadeRule.keep("org.controlsfx.control.HiddenSidesPane").inAll
 )
