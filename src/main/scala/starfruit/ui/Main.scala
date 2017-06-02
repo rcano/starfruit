@@ -34,7 +34,13 @@ class Main extends BaseApplication {
     println("got pinged")
     Platform.runLater { () => 
       println("showing panel?")
-      sceneRoot.getScene.getWindow.asInstanceOf[Stage].show()
+      val stage = sceneRoot.getScene.getWindow.asInstanceOf[Stage]
+      //the following code will look incredibly dumb: it is. Javafx is that dumb.
+      stage.setX(stage.getX)
+      stage.setY(stage.getY)
+      stage.setWidth(stage.getWidth)
+      stage.setHeight(stage.getHeight)
+      stage.show()
     }
   }
   
