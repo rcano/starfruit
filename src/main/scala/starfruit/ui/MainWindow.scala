@@ -15,12 +15,12 @@ class MainWindow extends BorderPane { $ =>
   val menuBar = new MenuBar { $ =>
     val fileMenu = $ \ new Menu("File") { $ =>
       val importAlarms = $ \ new MenuItem("Import Alarms...")
-      val exportSelectedAlarms = $ \ new MenuItem("Export Selected Alarms...")
+//      val exportSelectedAlarms = $ \ new MenuItem("Export Selected Alarms...")
       $ \ new SeparatorMenuItem
       val exit = $ \ new MenuItem("Quit")
     }
     val editMenu = $ \ new Menu("Edit") { $ =>
-      val selectAll = $ \ new MenuItem("Select All")
+//      val selectAll = $ \ new MenuItem("Select All")
       val deselect = $ \ new MenuItem("Deselect")
       $ \ new SeparatorMenuItem
       val findNext = $ \ new MenuItem("Find Next")
