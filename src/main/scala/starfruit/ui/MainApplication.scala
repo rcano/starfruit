@@ -31,6 +31,7 @@ class MainApplication extends BaseApplication {
       stage.setWidth(stage.getWidth)
       stage.setHeight(stage.getHeight)
       stage.show()
+      stage.toFront()
     }
   }
   
