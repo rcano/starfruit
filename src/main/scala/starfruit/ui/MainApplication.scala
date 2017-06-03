@@ -88,6 +88,17 @@ class MainApplication extends BaseApplication {
   }
   Seq(sceneRoot.toolBar.copyButton, sceneRoot.toolBar.editButton, sceneRoot.toolBar.deleteButton) foreach (
     _.disableProperty bind sceneRoot.alarmsTable.getSelectionModel.selectedItemProperty.isNull)
+  sceneRoot.toolBar.copyButton.setOnAction { _ =>
+    val selected = alarms.get(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex)
+    val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(selected.alarm))
+    var resAlarm: Option[Alarm] = None
+    dialog.okButton.setOnAction { _ =>
+      resAlarm = Some(dialog.getAlarm)
+      dialog.close()
+    }
+    dialog.showAndWait()
+    resAlarm foreach (n => `do`(NewAlarm(n)))
+  }
   sceneRoot.toolBar.editButton.setOnAction { _ =>
     val selected = alarms.get(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex)
     val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(selected.alarm))
