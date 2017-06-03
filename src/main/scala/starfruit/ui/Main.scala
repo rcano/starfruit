@@ -4,13 +4,11 @@ package ui
 import language.reflectiveCalls
 import better.files._
 import java.time.{LocalDateTime, ZoneId, Clock, Duration}
-import javafx.animation.FadeTransition
 import javafx.application.{Application, Platform}
 import javafx.collections.transformation.SortedList
 import javafx.scene.control._
 import javafx.scene.image.Image
 import javafx.scene.input.{KeyCode, KeyCombination, KeyEvent}
-import javafx.scene.layout._
 import javafx.scene.paint.Color
 import javafx.stage.FileChooser
 import javafx.stage.Stage
