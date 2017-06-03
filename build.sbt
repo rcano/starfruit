@@ -24,6 +24,7 @@ assemblyShadeRules in assembly := Seq(
   ShadeRule.keep("scala.io.Codec$").inAll,
   ShadeRule.keep("scala.collection.mutable.MultiMap").inAll,
   ShadeRule.keep("scala.collection.mutable.Stack").inAll,
+  ShadeRule.keep("scala.sys.process.package$").inAll,
   ShadeRule.keep("scala.runtime.AbstractFunction2").inAll,
   ShadeRule.keep("scala.runtime.StructuralCallSite").inAll,
   ShadeRule.keep("scala.runtime.java8.*").inAll,
