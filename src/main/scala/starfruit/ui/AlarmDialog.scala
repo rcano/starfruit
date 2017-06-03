@@ -11,7 +11,7 @@ import javafx.scene.layout._
 import javafx.scene.paint.Color
 import javafx.scene.text._
 import javafx.stage._
-import java.time.{DayOfWeek, Instant, LocalDateTime, Month}
+import java.time.{DayOfWeek, LocalDateTime, Month}
 import starfruit.Alarm
 import scala.collection.JavaConverters._
 
