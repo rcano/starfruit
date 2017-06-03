@@ -76,7 +76,7 @@ class MainApplication extends BaseApplication {
   /*************************************
    * UI tunning
    *************************************/
-  sceneRoot.toolBar.newButton.displayAlarm setOnAction { _ => 
+  sceneRoot.toolBar.newButton.displayAlarm setOnAction { _ =>
     val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, None)
     var resAlarm: Option[Alarm] = None
     dialog.okButton.setOnAction { _ =>
@@ -89,7 +89,7 @@ class MainApplication extends BaseApplication {
   Seq(sceneRoot.toolBar.copyButton, sceneRoot.toolBar.editButton, sceneRoot.toolBar.deleteButton) foreach (
     _.disableProperty bind sceneRoot.alarmsTable.getSelectionModel.selectedItemProperty.isNull)
   sceneRoot.toolBar.copyButton.setOnAction { _ =>
-    val selected = alarms.get(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex)
+    val selected = alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))
     val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(selected.alarm))
     var resAlarm: Option[Alarm] = None
     dialog.okButton.setOnAction { _ =>
@@ -100,7 +100,7 @@ class MainApplication extends BaseApplication {
     resAlarm foreach (n => `do`(NewAlarm(n)))
   }
   sceneRoot.toolBar.editButton.setOnAction { _ =>
-    val selected = alarms.get(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex)
+    val selected = alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))
     val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(selected.alarm))
     var resAlarm: Option[Alarm] = None
     dialog.okButton.setOnAction { _ =>
@@ -111,7 +111,7 @@ class MainApplication extends BaseApplication {
     resAlarm foreach (n => `do`(EditAlarm(selected, n)))
   }
   sceneRoot.toolBar.deleteButton.setOnAction { _ =>
-    `do`(DeleteAlarm(alarms.get(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex)))
+    `do`(DeleteAlarm(alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))))
   }
   sceneRoot.toolBar.undoButton.setDisable(true)
   sceneRoot.toolBar.redoButton.setDisable(true)
