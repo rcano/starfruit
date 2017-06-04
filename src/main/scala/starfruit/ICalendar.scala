@@ -19,7 +19,7 @@ object ICalendar {
   lazy val name = P( CharPred { case ';' | ':' | '=' | '\r' | '\n' => false; case _ => true }.rep(min=1) )
   lazy val nl = P("\r\n" | "\n")
   
-  def parse(ical: String): Try[Seq[AlarmState]] = Try {
+  def parse(ical: String, defaultFont: String): Try[Seq[AlarmState]] = Try {
     val gmtDateParser = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssVV")
     val localDateParser = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
     section.parse(ical) match {
@@ -27,12 +27,12 @@ object ICalendar {
         vcalendar.elements.collect {
           case vevent@ Section("VEVENT", elements) => 
             val valarm = vevent.field[Section]("VALARM").get
-            val (font, foreground, background) = valarm.field[Entry]("X-KDE-KALARM-FONTCOLOR").fold(("", "#ffffff", "#fff0f5")) { s =>
+            val (font, foreground, background) = valarm.field[Entry]("X-KDE-KALARM-FONTCOLOR").fold((defaultFont, "#ffffff", "#fff0f5")) { s =>
               s.value.split("\\\\;") match {
                 case Array(back, fore, font) =>
                   val Array(fontName, size, _*) = font.split("\\\\,")
                   (s"normal $size $fontName", fore, back)
-                case Array(back, fore) => ("", fore, back)
+                case Array(back, fore) => (defaultFont, fore, back)
               }
             }
             val atTime = vevent.field[Entry]("DTSTART").map(e => LocalDateTime.parse(e.value, localDateParser)).get
@@ -138,5 +138,5 @@ object ICalendarTest extends App {
 //  val text = file.contentAsString
 //  reportParsed(ICalendar.section.parse(text))
   
-  ICalendar.parse((File.home/"Documents"/"alarms.ics").contentAsString).fold(_.printStackTrace, println)
+  ICalendar.parse((File.home/"Documents"/"alarms.ics").contentAsString, "system").fold(_.printStackTrace, println)
 }

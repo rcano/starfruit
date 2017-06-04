@@ -129,7 +129,7 @@ class MainApplication extends BaseApplication {
     val fileChooser = new FileChooser().modify(_.setTitle("Open calendar file"),
                                                _.getExtensionFilters.add(new FileChooser.ExtensionFilter("Calendar File", "*.ics")))
     Option(fileChooser.showOpenDialog(sceneRoot.getScene.getWindow)).foreach { file =>
-      ICalendar.parse(file.toScala.contentAsString) match {
+      ICalendar.parse(file.toScala.contentAsString, "normal " + BaseApplication.defaultFont.getSize + " \"" + BaseApplication.defaultFont.getFamily + "\"") match {
         case Success(alarms) => `do`(ImportAlarms(alarms))
         case Failure(ex) => new Alert(Alert.AlertType.ERROR, "Something went wrong:\n" + ex, ButtonType.OK).modify(_.setResizable(true)).show()
       }
