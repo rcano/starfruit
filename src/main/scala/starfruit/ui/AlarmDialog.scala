@@ -11,7 +11,7 @@ import javafx.scene.layout._
 import javafx.scene.paint.Color
 import javafx.scene.text._
 import javafx.stage._
-import java.time.{DayOfWeek, LocalDateTime, Month}
+import java.time.{DayOfWeek, LocalDateTime, Month, Instant}
 import starfruit.Alarm
 import scala.collection.JavaConverters._
 
@@ -35,7 +35,7 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
   cancelButton.setOnAction(_ => close())
   
   tryButton.setOnAction { _ =>
-    Utils.newAlert(parent.getScene)(getMessage.get().fold(_.toString, identity),
+    Utils.newAlert(parent.getScene)(Utils.userInstantFormatter.format(Instant.now), getMessage.get().fold(_.toString, identity),
                                     alarmPane.action.fontSelectorDialog.foregroundColor.getValue.colorToWeb,
                                     alarmPane.action.fontSelectorDialog.backgroundColor.getValue.colorToWeb,
                                     getFont,

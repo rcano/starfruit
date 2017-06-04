@@ -11,6 +11,7 @@ import javafx.scene.control._
 import javafx.scene.image.Image
 import javafx.scene.input.{KeyCode, KeyCombination, KeyEvent}
 import javafx.scene.paint.Color
+import javafx.scene.text.Font
 import javafx.stage.FileChooser
 import javafx.stage.Stage
 import org.controlsfx.validation.ValidationMessage
@@ -129,7 +130,7 @@ class MainApplication extends BaseApplication {
     val fileChooser = new FileChooser().modify(_.setTitle("Open calendar file"),
                                                _.getExtensionFilters.add(new FileChooser.ExtensionFilter("Calendar File", "*.ics")))
     Option(fileChooser.showOpenDialog(sceneRoot.getScene.getWindow)).foreach { file =>
-      ICalendar.parse(file.toScala.contentAsString, "normal " + BaseApplication.defaultFont.getSize + " \"" + BaseApplication.defaultFont.getFamily + "\"") match {
+      ICalendar.parse(file.toScala.contentAsString, "normal " + Font.getDefault.getSize + " \"" + Font.getDefault.getFamily + "\"") match {
         case Success(alarms) => `do`(ImportAlarms(alarms))
         case Failure(ex) => new Alert(Alert.AlertType.ERROR, "Something went wrong:\n" + ex, ButtonType.OK).modify(_.setResizable(true)).show()
       }
@@ -247,8 +248,8 @@ class MainApplication extends BaseApplication {
               next
             case AlarmStateMachine.NotifyReminder(next) =>
               changesDetected = true
-              Platform.runLater(() => Utils.newAlert(sceneRoot.getScene)("Reminder for:\n" + next.alarm.message.get().fold(_.toString, identity) + 
-                                                                         "\nocurring in " + Duration.between(now, next.nextOccurrence), next.alarm.foregroundColor,
+              Platform.runLater(() => Utils.newAlert(sceneRoot.getScene)("Reminder occurring in " + Duration.between(now, next.nextOccurrence),
+                                                                         next.alarm.message.get().fold(_.toString, identity), next.alarm.foregroundColor,
                                                                          next.alarm.backgroundColor, next.alarm.font, ButtonType.OK).show())
               next
             case AlarmStateMachine.AutoCloseAlarmNotification(next) =>
@@ -272,7 +273,7 @@ class MainApplication extends BaseApplication {
       val now = wallClock.instant()
       val message = state.alarm.message.get()
       val deferButton = new ButtonType("⏰ defer")
-      val alert = Utils.newAlert(sceneRoot.getScene)(message.fold(_.toString, identity), state.alarm.foregroundColor,
+      val alert = Utils.newAlert(sceneRoot.getScene)(Utils.userInstantFormatter.format(state.nextOccurrence), message.fold(_.toString, identity), state.alarm.foregroundColor,
                                                      state.alarm.backgroundColor, state.alarm.font, deferButton, ButtonType.OK)
       showingAlarms(state.alarm) = alert
       alert.showAndWait().ifPresent {

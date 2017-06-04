@@ -133,10 +133,10 @@ class AlarmPane extends VBox { $ =>
           }
       })
     
-    object fontSelectorDialog extends FontSelectorDialog(BaseApplication.defaultFont) {
+    object fontSelectorDialog extends FontSelectorDialog(Font.getDefault) {
       val fontPane = getDialogPane.getContent.asInstanceOf[GridPane { def getFont(): Font; def setFont(f: Font): Unit }].modify(
-        p => p.setPrefSize(BaseApplication.defaultFont.getSize * p.getPrefWidth / 13,
-                           BaseApplication.defaultFont.getSize * p.getPrefHeight / 13),
+        p => p.setPrefSize(Font.getDefault.getSize * p.getPrefWidth / 13,
+                           Font.getDefault.getSize * p.getPrefHeight / 13),
         _.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE))
       val foregroundColor = new ColorPicker(Color.BLACK)
       val backgroundColor = new ColorPicker(Color.LAVENDERBLUSH)
