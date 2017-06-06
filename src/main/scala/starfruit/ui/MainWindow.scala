@@ -9,6 +9,7 @@ import javafx.scene.control._
 import javafx.scene.input.KeyCode
 import javafx.scene.layout._
 import javafx.scene.paint.Color
+import javafx.scene.text.Font
 import javafx.util.StringConverter
 import org.controlsfx.control.HiddenSidesPane
 
@@ -78,7 +79,7 @@ class MainWindow extends BorderPane { $ =>
       setCellValueFactory { cellDataFeatures => new ReadOnlyObjectWrapper(cellDataFeatures.getValue._2) }
     }
     val colorCol = new TableColumn[TableColumns, Color]("") {
-      setPrefWidth(40)
+      setPrefWidth(Font.getDefault.getSize)
       setSortable(false)
       setCellValueFactory { cellDataFeatures => new ReadOnlyObjectWrapper(cellDataFeatures.getValue._3) }
       setCellFactory { col =>
@@ -95,7 +96,7 @@ class MainWindow extends BorderPane { $ =>
       }
     }
     val typeCol = new TableColumn[TableColumns, String]("") {
-      setPrefWidth(40)
+      setPrefWidth(Font.getDefault.getSize * 1.8)
       setSortable(false)
       setCellValueFactory { cellDataFeatures => new ReadOnlyObjectWrapper(cellDataFeatures.getValue._4) }
     }
