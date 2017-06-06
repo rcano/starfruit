@@ -182,6 +182,10 @@ class MainApplication extends BaseApplication {
           else sceneRoot.findNext.fire()
         }
       })
+    
+    
+    loadAlarms.fold[Unit](ex => new Alert(Alert.AlertType.ERROR, "Failed loading alarms: " + ex).modify(_.setResizable(true)).show(), alarms.addAll(_:_*))
+    Platform.runLater(() => alarms.asScala.filter(_.state == AlarmState.Showing) foreach showAlarm) //run later to ensure stage initialization
   }
   
   /********************************
@@ -225,9 +229,6 @@ class MainApplication extends BaseApplication {
   /****************************************************
    * configuration for the state machine periodic task
    ***************************************************/
-  loadAlarms.fold[Unit](ex => new Alert(Alert.AlertType.ERROR, "Failed loading alarms: " + ex).modify(_.setResizable(true)).show(), alarms.addAll(_:_*))
-  Platform.runLater(() => alarms.asScala.filter(_.state == AlarmState.Showing) foreach showAlarm) //run later to ensure stage initialization
-  
   
   private val showingAlarms = collection.mutable.Map[Alarm, Alert]()
   val wallClock = Clock.tickMinutes(ZoneId.systemDefault)
