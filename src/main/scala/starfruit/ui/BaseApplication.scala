@@ -18,10 +18,8 @@ trait BaseApplication extends Application {
         case screenDpi=> Some(screenDpi / 6) // 12 points
       }
     
-      systemFontSize foreach { systemFontSize =>
-        val fontFactoryClass = classOf[com.sun.javafx.font.PrismFontFactory]
-        fontFactoryClass.getDeclaredField("systemFontSize").modify(_.setAccessible(true)).setFloat(null, systemFontSize.toFloat)
-      }
+      systemFontSize foreach (systemFontSize => classOf[com.sun.javafx.font.PrismFontFactory].getDeclaredField("systemFontSize").
+                              modify(_.setAccessible(true)).setFloat(null, systemFontSize.toFloat))
     }
   }
   def start(stage): Unit = {
