@@ -273,7 +273,7 @@ class MainApplication extends BaseApplication {
       val now = wallClock.instant()
       val message = state.alarm.message.get()
       val deferButton = new ButtonType("⏰ defer")
-      val alert = Utils.newAlert(sceneRoot.getScene)(Utils.userInstantFormatter.format(state.nextOccurrence), message.fold(_.toString, identity), state.alarm.foregroundColor,
+      val alert = Utils.newAlert(sceneRoot.getScene)(Utils.instantToUserString(state.nextOccurrence), message.fold(_.toString, identity), state.alarm.foregroundColor,
                                                      state.alarm.backgroundColor, state.alarm.font, deferButton, ButtonType.OK)
       showingAlarms(state.alarm) = alert
       alert.showAndWait().ifPresent {

@@ -214,13 +214,13 @@ trait DaysSelection {
   }
 }
 class DailyRecurrence extends BorderPane with RecurrenceSubPane with DaysSelection { $ =>
-  val days = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(3) }
+  val days = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(4) }
   $ top new HBox(new Label("Recur every"), days, new Label("day(s)")) { setSpacing(15); setAlignment(Pos.BASELINE_LEFT) }
   
   $ center selectedDays
 }
 class WeeklyRecurrence extends BorderPane with RecurrenceSubPane with DaysSelection { $ =>
-  val weeks = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(3) }
+  val weeks = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(4) }
   $ top hbox(new Label("Recur every"), weeks, new Label("week(s)"))(spacing = 15, alignment = Pos.BASELINE_LEFT)
   
   $ center selectedDays
@@ -253,14 +253,14 @@ trait MonthSelection {
   onTheDayDay.disableProperty bind isNotOnTheDayMode
 }
 class MonthlyRecurrence extends BorderPane with RecurrenceSubPane with MonthSelection { $ =>
-  val months = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(3) }
+  val months = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(4) }
   $ top hbox(new Label("Recur every"), months, new Label("month(s)"))(spacing = 15, alignment = Pos.BASELINE_LEFT)
   
   $ center monthsPane
 }
 class YearlyRecurrence extends VBox with RecurrenceSubPane with MonthSelection { $ =>
   setSpacing(15)
-  val years = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(3) }
+  val years = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(4) }
   def mkrow(nodes: Node*) = $ \ hbox(nodes:_*)(spacing = 15, alignment = Pos.BASELINE_LEFT)
   mkrow(new Label("Recur every"), years, new Label("year(s)"))
   
@@ -301,7 +301,7 @@ class SubRecurrenceDialog extends BorderPane { $ =>
   
   val mode = new ToggleGroup()
   val repetitionsMode = mode \ new RadioButton("Number of repetitions:")
-  val repetitions = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(3) }
+  val repetitions = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(4) }
   val durationMode = mode \ new RadioButton("Duration")
   val duration = new DurationPicker(DurationPicker.Minutes, DurationPicker.HoursMinutes, DurationPicker.Days)
   
