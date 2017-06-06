@@ -35,7 +35,7 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
   cancelButton.setOnAction(_ => close())
   
   tryButton.setOnAction { _ =>
-    Utils.newAlert(parent.getScene)(Utils.userInstantFormatter.format(Instant.now), getMessage.get().fold(_.toString, identity),
+    Utils.newAlert(parent.getScene)(Utils.instantToUserString(Instant.now), getMessage.get().fold(_.toString, identity),
                                     alarmPane.action.fontSelectorDialog.foregroundColor.getValue.colorToWeb,
                                     alarmPane.action.fontSelectorDialog.backgroundColor.getValue.colorToWeb,
                                     getFont,

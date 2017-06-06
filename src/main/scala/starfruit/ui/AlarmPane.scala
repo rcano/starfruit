@@ -75,7 +75,7 @@ class AlarmPane extends VBox { $ =>
       $ \ hbox(testButton, path.modify(HBox.setHgrow(_, Priority.ALWAYS)), browseButton)
       
       val repeat = new CheckBox("Repeat")
-      val pauseBetweenRepetitions = new Spinner[Int](0, Int.MaxValue, 0, 1) { getEditor.setPrefColumnCount(2) }
+      val pauseBetweenRepetitions = new Spinner[Int](0, Int.MaxValue, 0, 1) { getEditor.setPrefColumnCount(4) }
       
       $ \ new TitledVBox(repeat, spacing = 10) \ hbox(new Label("Pause between repetitions:"), pauseBetweenRepetitions, new Label("second(s)")).modify(
         _.disableProperty bind repeat.selectedProperty.not)

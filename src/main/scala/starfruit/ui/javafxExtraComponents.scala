@@ -22,8 +22,8 @@ class TitledVBox(val title: Labeled, spacing: Int = 0, alignment: Pos = Pos.CENT
 
 class HourPicker(initial: LocalTime = LocalTime.MIDNIGHT, unboundHours: Boolean = false) extends HBox { $ =>
   setAlignment(Pos.BASELINE_CENTER)
-  val hours = $ \ new Spinner[Int](0, if (unboundHours) Int.MaxValue else 23, initial.getHour, 1) { getEditor.setPrefColumnCount(3); getStyleClass.add(Spinner.STYLE_CLASS_ARROWS_ON_LEFT_VERTICAL) }
-  val minutes = $ \ new Spinner[Int](0, 59, initial.getMinute, 1) { getEditor.setPrefColumnCount(3) }
+  val hours = $ \ new Spinner[Int](0, if (unboundHours) Int.MaxValue else 23, initial.getHour, 1) { getEditor.setPrefColumnCount(4); getStyleClass.add(Spinner.STYLE_CLASS_ARROWS_ON_LEFT_VERTICAL) }
+  val minutes = $ \ new Spinner[Int](0, 59, initial.getMinute, 1) { getEditor.setPrefColumnCount(4) }
   
   def getTime = LocalTime.of(hours.getValue, minutes.getValue)
   def setTime(t: LocalTime): Unit = { hours.getValueFactory.setValue(t.getHour); minutes.getValueFactory.setValue(t.getMinute) }
