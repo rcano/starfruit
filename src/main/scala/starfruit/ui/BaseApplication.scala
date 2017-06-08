@@ -9,7 +9,6 @@ import scala.collection.JavaConverters._
 trait BaseApplication extends Application {
   def sceneRoot(): Parent
   override def init() = {
-    
     println("named parameters " + getParameters.getNamed)
     val fontSize = getParameters.getNamed.asScala.get("fontSize").map(_.toDouble)
     if (util.Properties.isLinux || fontSize.isDefined) {
@@ -17,7 +16,7 @@ trait BaseApplication extends Application {
         case -1 => fontSize
         case screenDpi=> Some(screenDpi / 6) // 12 points
       }
-    
+      
       systemFontSize foreach (systemFontSize => classOf[com.sun.javafx.font.PrismFontFactory].getDeclaredField("systemFontSize").
                               modify(_.setAccessible(true)).setFloat(null, systemFontSize.toFloat))
     }

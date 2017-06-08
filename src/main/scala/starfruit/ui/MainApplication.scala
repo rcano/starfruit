@@ -37,7 +37,7 @@ class MainApplication extends BaseApplication {
     }
   }
   
-  val sceneRoot = new MainWindow()
+  lazy val sceneRoot = new MainWindow()
   implicit val pconfig = PConfig.Default.copy(areSharedObjectsSupported = false)
 
   val alarmsFile = File.home / ".starfruit-alarms"
@@ -71,101 +71,102 @@ class MainApplication extends BaseApplication {
         }
         (LocalDateTime.ofInstant(s.nextOccurrence, ZoneId.systemDefault), recString, Color.web(s.alarm.backgroundColor), "🖅", msg)
       }))
-  sceneRoot.alarmsTable.setItems(alarmsTableSortedList)
-  alarmsTableSortedList.comparatorProperty bind sceneRoot.alarmsTable.comparatorProperty
-  
-  /*************************************
-   * UI tunning
-   *************************************/
-  sceneRoot.toolBar.newButton.displayAlarm setOnAction { _ =>
-    val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, None)
-    var resAlarm: Option[Alarm] = None
-    dialog.okButton.setOnAction { _ =>
-      resAlarm = Some(dialog.getAlarm)
-      dialog.close()
-    }
-    dialog.showAndWait()
-    resAlarm foreach { alarm => `do`(NewAlarm(alarm)) }
-  }
-  Seq(sceneRoot.toolBar.copyButton, sceneRoot.toolBar.editButton, sceneRoot.toolBar.deleteButton) foreach (
-    _.disableProperty bind sceneRoot.alarmsTable.getSelectionModel.selectedItemProperty.isNull)
-  sceneRoot.toolBar.copyButton.setOnAction { _ =>
-    val selected = alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))
-    val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(selected.alarm))
-    var resAlarm: Option[Alarm] = None
-    dialog.okButton.setOnAction { _ =>
-      resAlarm = Some(dialog.getAlarm)
-      dialog.close()
-    }
-    dialog.showAndWait()
-    resAlarm foreach (n => `do`(NewAlarm(n)))
-  }
-  sceneRoot.toolBar.editButton.setOnAction { _ =>
-    val selected = alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))
-    val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(selected.alarm))
-    var resAlarm: Option[Alarm] = None
-    dialog.okButton.setOnAction { _ =>
-      resAlarm = Some(dialog.getAlarm)
-      dialog.close()
-    }
-    dialog.showAndWait()
-    resAlarm foreach (n => `do`(EditAlarm(selected, n)))
-  }
-  sceneRoot.toolBar.deleteButton.setOnAction { _ =>
-    `do`(DeleteAlarm(alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))))
-  }
-  sceneRoot.toolBar.undoButton.setDisable(true)
-  sceneRoot.toolBar.redoButton.setDisable(true)
-  alarms.addListener { evt =>
-    sceneRoot.toolBar.undoButton.setDisable(undoQueue.isEmpty)
-    sceneRoot.toolBar.redoButton.setDisable(redoQueue.isEmpty)
-    //when the list changes, persist it
-    storeAlarms(alarms.asScala).failed.foreach { ex => new Alert(Alert.AlertType.ERROR, "Failed persisting alarms: " + ex.toString).modify(_.setResizable(true)).show() }
-    ()
-  }
-  sceneRoot.toolBar.undoButton.setOnAction(_ => undo())
-  sceneRoot.toolBar.redoButton.setOnAction(_ => redo())
-  
-  sceneRoot.menuBar.fileMenu.importAlarms.setOnAction { _ =>
-    val fileChooser = new FileChooser().modify(_.setTitle("Open calendar file"),
-                                               _.getExtensionFilters.add(new FileChooser.ExtensionFilter("Calendar File", "*.ics")))
-    Option(fileChooser.showOpenDialog(sceneRoot.getScene.getWindow)).foreach { file =>
-      ICalendar.parse(file.toScala.contentAsString, "normal " + Font.getDefault.getSize + " \"" + Font.getDefault.getFamily + "\"") match {
-        case Success(alarms) => `do`(ImportAlarms(alarms))
-        case Failure(ex) => new Alert(Alert.AlertType.ERROR, "Something went wrong:\n" + ex, ButtonType.OK).modify(_.setResizable(true)).show()
-      }
-    }
-  }
-  sceneRoot.menuBar.fileMenu.exit.setOnAction(_ => Platform.exit())
-  
-  val graphicsDecorator = new GraphicValidationDecoration()
-  sceneRoot.findTextField.textProperty.addListener((_, _,_) => graphicsDecorator.removeDecorations(sceneRoot.findTextField))
-  sceneRoot.findTextField.setOnAction { _ =>
-    val text = sceneRoot.findTextField.getText
-    sceneRoot.alarmsTable.getItems.asScala.indexWhere(_._5.toLowerCase contains text.toLowerCase) match {
-      case -1 => graphicsDecorator.applyValidationDecoration(ValidationMessage.error(sceneRoot.findTextField, "Not found"))
-      case other => sceneRoot.alarmsTable.getSelectionModel.select(other)
-    }
-  }
-  private def findNextOrPrev(nextOrPrev: Boolean) {
-    val text = sceneRoot.findTextField.getText
-    if (text.nonEmpty) {
-      val selected = sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex.max(0)
-      val nextIdx = if (nextOrPrev)
-        sceneRoot.alarmsTable.getItems.asScala.indexWhere(_._5.toLowerCase contains text.toLowerCase, selected + 1)  
-      else 
-        sceneRoot.alarmsTable.getItems.asScala.lastIndexWhere(_._5.toLowerCase contains text.toLowerCase, selected - 1)  
-      nextIdx match {
-        case -1 => //do nothing in this case
-        case other => sceneRoot.alarmsTable.getSelectionModel.select(other)
-      }
-    }
-  }
-  sceneRoot.findNext.setOnAction(_ => findNextOrPrev(true))
-  sceneRoot.findPrevious.setOnAction(_ => findNextOrPrev(false))
   
   override def extraInitialize(stage) = {
     stage.getIcons.add(new Image("/starfruit.png"))
+    
+      
+    /*************************************
+     * UI tunning
+     *************************************/
+    sceneRoot.toolBar.newButton.displayAlarm setOnAction { _ =>
+      val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, None)
+      var resAlarm: Option[Alarm] = None
+      dialog.okButton.setOnAction { _ =>
+        resAlarm = Some(dialog.getAlarm)
+        dialog.close()
+      }
+      dialog.showAndWait()
+      resAlarm foreach { alarm => `do`(NewAlarm(alarm)) }
+    }
+    Seq(sceneRoot.toolBar.copyButton, sceneRoot.toolBar.editButton, sceneRoot.toolBar.deleteButton) foreach (
+      _.disableProperty bind sceneRoot.alarmsTable.getSelectionModel.selectedItemProperty.isNull)
+    sceneRoot.toolBar.copyButton.setOnAction { _ =>
+      val selected = alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))
+      val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(selected.alarm))
+      var resAlarm: Option[Alarm] = None
+      dialog.okButton.setOnAction { _ =>
+        resAlarm = Some(dialog.getAlarm)
+        dialog.close()
+      }
+      dialog.showAndWait()
+      resAlarm foreach (n => `do`(NewAlarm(n)))
+    }
+    sceneRoot.toolBar.editButton.setOnAction { _ =>
+      val selected = alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))
+      val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(selected.alarm))
+      var resAlarm: Option[Alarm] = None
+      dialog.okButton.setOnAction { _ =>
+        resAlarm = Some(dialog.getAlarm)
+        dialog.close()
+      }
+      dialog.showAndWait()
+      resAlarm foreach (n => `do`(EditAlarm(selected, n)))
+    }
+    sceneRoot.toolBar.deleteButton.setOnAction { _ =>
+      `do`(DeleteAlarm(alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))))
+    }
+    sceneRoot.toolBar.undoButton.setDisable(true)
+    sceneRoot.toolBar.redoButton.setDisable(true)
+    alarms.addListener { evt =>
+      sceneRoot.toolBar.undoButton.setDisable(undoQueue.isEmpty)
+      sceneRoot.toolBar.redoButton.setDisable(redoQueue.isEmpty)
+      //when the list changes, persist it
+      storeAlarms(alarms.asScala).failed.foreach { ex => new Alert(Alert.AlertType.ERROR, "Failed persisting alarms: " + ex.toString).modify(_.setResizable(true)).show() }
+      ()
+    }
+    sceneRoot.toolBar.undoButton.setOnAction(_ => undo())
+    sceneRoot.toolBar.redoButton.setOnAction(_ => redo())
+  
+    sceneRoot.menuBar.fileMenu.importAlarms.setOnAction { _ =>
+      val fileChooser = new FileChooser().modify(_.setTitle("Open calendar file"),
+                                                 _.getExtensionFilters.add(new FileChooser.ExtensionFilter("Calendar File", "*.ics")))
+      Option(fileChooser.showOpenDialog(sceneRoot.getScene.getWindow)).foreach { file =>
+        ICalendar.parse(file.toScala.contentAsString, "normal " + Font.getDefault.getSize + " \"" + Font.getDefault.getFamily + "\"") match {
+          case Success(alarms) => `do`(ImportAlarms(alarms))
+          case Failure(ex) => new Alert(Alert.AlertType.ERROR, "Something went wrong:\n" + ex, ButtonType.OK).modify(_.setResizable(true)).show()
+        }
+      }
+    }
+    sceneRoot.menuBar.fileMenu.exit.setOnAction(_ => Platform.exit())
+  
+    val graphicsDecorator = new GraphicValidationDecoration()
+    sceneRoot.findTextField.textProperty.addListener((_, _,_) => graphicsDecorator.removeDecorations(sceneRoot.findTextField))
+    sceneRoot.findTextField.setOnAction { _ =>
+      val text = sceneRoot.findTextField.getText
+      sceneRoot.alarmsTable.getItems.asScala.indexWhere(_._5.toLowerCase contains text.toLowerCase) match {
+        case -1 => graphicsDecorator.applyValidationDecoration(ValidationMessage.error(sceneRoot.findTextField, "Not found"))
+        case other => sceneRoot.alarmsTable.getSelectionModel.select(other)
+      }
+    }
+    def findNextOrPrev(nextOrPrev: Boolean) {
+      val text = sceneRoot.findTextField.getText
+      if (text.nonEmpty) {
+        val selected = sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex.max(0)
+        val nextIdx = if (nextOrPrev)
+          sceneRoot.alarmsTable.getItems.asScala.indexWhere(_._5.toLowerCase contains text.toLowerCase, selected + 1)  
+        else 
+          sceneRoot.alarmsTable.getItems.asScala.lastIndexWhere(_._5.toLowerCase contains text.toLowerCase, selected - 1)  
+        nextIdx match {
+          case -1 => //do nothing in this case
+          case other => sceneRoot.alarmsTable.getSelectionModel.select(other)
+        }
+      }
+    }
+    sceneRoot.findNext.setOnAction(_ => findNextOrPrev(true))
+    sceneRoot.findPrevious.setOnAction(_ => findNextOrPrev(false))
+    
+    
     stage.getScene.getAccelerators.put(KeyCombination.valueOf("Shortcut+F"), () => sceneRoot.toolBar.findButton.fire())
     stage.getScene.getAccelerators.put(KeyCombination.valueOf("F3"), { () =>
         sceneRoot.toolBar.findButton.fire()
@@ -183,7 +184,11 @@ class MainApplication extends BaseApplication {
         }
       })
     
+    println("System font size " + Font.getDefault.getSize)
     
+    sceneRoot.alarmsTable.setItems(alarmsTableSortedList)
+    alarmsTableSortedList.comparatorProperty bind sceneRoot.alarmsTable.comparatorProperty
+  
     loadAlarms.fold[Unit](ex => new Alert(Alert.AlertType.ERROR, "Failed loading alarms: " + ex).modify(_.setResizable(true)).show(), alarms.addAll(_:_*))
     Platform.runLater(() => alarms.asScala.filter(_.state == AlarmState.Showing) foreach showAlarm) //run later to ensure stage initialization
   }
