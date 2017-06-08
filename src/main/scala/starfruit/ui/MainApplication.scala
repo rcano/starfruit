@@ -104,17 +104,22 @@ class MainApplication extends BaseApplication {
     }
     sceneRoot.toolBar.editButton.setOnAction { _ =>
       val selected = alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))
-      val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(selected.alarm))
-      var resAlarm: Option[Alarm] = None
-      dialog.okButton.setOnAction { _ =>
-        resAlarm = Some(dialog.getAlarm)
-        dialog.close()
+      if (!showingAlarms.contains(selected.alarm)) {
+        val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(selected.alarm))
+        var resAlarm: Option[Alarm] = None
+        dialog.okButton.setOnAction { _ =>
+          resAlarm = Some(dialog.getAlarm)
+          dialog.close()
+        }
+        dialog.showAndWait()
+        resAlarm foreach (n => `do`(EditAlarm(selected, n)))
       }
-      dialog.showAndWait()
-      resAlarm foreach (n => `do`(EditAlarm(selected, n)))
     }
     sceneRoot.toolBar.deleteButton.setOnAction { _ =>
-      `do`(DeleteAlarm(alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))))
+      val selected = alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))
+      if (!showingAlarms.contains(selected.alarm)) {
+      `do`(DeleteAlarm(selected))
+      }
     }
     sceneRoot.toolBar.undoButton.setDisable(true)
     sceneRoot.toolBar.redoButton.setDisable(true)
