@@ -4,6 +4,7 @@ import java.time.{Instant, ZonedDateTime, ZoneId}
 import java.time.format.DateTimeFormatter
 import javafx.scene.Scene
 import javafx.scene.control._
+import javafx.stage.Modality
 
 object Utils {
 
@@ -11,9 +12,10 @@ object Utils {
   def instantToUserString(i: Instant): String = userInstantFormatter format ZonedDateTime.ofInstant(i, ZoneId.systemDefault)
   
   def newAlert(parentScene: Scene)(header: String, msg: String,
-               foreground: String, background: String, font: String,
-               buttons: ButtonType*) = {
+                                   foreground: String, background: String, font: String,
+                                   buttons: ButtonType*) = {
     val res = new Alert(Alert.AlertType.INFORMATION, msg, buttons:_*)
+    res.initModality(Modality.NONE)
     res.setResizable(true)
     res.getDialogPane.getScene.getStylesheets.addAll(parentScene.getStylesheets)
     res.getDialogPane.setHeaderText(header)
