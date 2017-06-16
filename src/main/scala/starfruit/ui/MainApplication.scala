@@ -6,7 +6,9 @@ import better.files._
 import java.time.{LocalDateTime, LocalTime, ZoneId, ZonedDateTime, Clock, Duration}
 import java.time.temporal.ChronoUnit
 import javafx.application.Platform
+import javafx.collections.ListChangeListener
 import javafx.collections.transformation.SortedList
+import javafx.scene.Scene
 import javafx.scene.control._
 import javafx.scene.image.Image
 import javafx.scene.input.{KeyCode, KeyCombination, KeyEvent}
@@ -118,21 +120,47 @@ class MainApplication extends BaseApplication {
     sceneRoot.toolBar.deleteButton.setOnAction { _ =>
       val selected = alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))
       if (!showingAlarms.contains(selected.alarm)) {
-      `do`(DeleteAlarm(selected))
+        `do`(DeleteAlarm(selected))
       }
     }
     sceneRoot.toolBar.undoButton.setDisable(true)
     sceneRoot.toolBar.redoButton.setDisable(true)
-    alarms.addListener { evt =>
-      sceneRoot.toolBar.undoButton.setDisable(undoQueue.isEmpty)
-      sceneRoot.toolBar.redoButton.setDisable(redoQueue.isEmpty)
-      //when the list changes, persist it
-      storeAlarms(alarms.asScala).failed.foreach { ex => new Alert(Alert.AlertType.ERROR, "Failed persisting alarms: " + ex.toString).modify(_.setResizable(true)).show() }
-      ()
+    alarms addListener new ListChangeListener[AlarmState] {
+      def onChanged(evt: ListChangeListener.Change[_ <: AlarmState]) = {
+        sceneRoot.toolBar.undoButton.setDisable(undoQueue.isEmpty)
+        sceneRoot.toolBar.redoButton.setDisable(redoQueue.isEmpty)
+        //when the list changes, persist it
+        storeAlarms(alarms.asScala).failed.foreach { ex => new Alert(Alert.AlertType.ERROR, "Failed persisting alarms: " + ex.toString).modify(_.setResizable(true)).show() }
+      
+//        if there is a removed set, purge the undo/redo actions that target them
+        evt.next()
+        if (evt.getRemovedSize > 0) {
+          val removed = evt.getRemoved.asScala
+          undoQueue = undoQueue.filterNot {
+            case EditAlarm(old, _) if removed.exists(_.alarm == old.alarm) => true
+            case NewAlarm(a) if removed.exists(_.alarm == a) => true
+            case _ => false
+          }
+          redoQueue = redoQueue.filterNot {
+            case EditAlarm(_, curr) if removed.exists(_.alarm == curr) => true
+            case _ => false
+          }
+        }
+      }
     }
     sceneRoot.toolBar.undoButton.setOnAction(_ => undo())
     sceneRoot.toolBar.redoButton.setOnAction(_ => redo())
   
+    sceneRoot.menuBar.fileMenu.viewLog.setOnAction { _ =>
+      val logStage = new Stage()
+      logStage.initOwner(sceneRoot.getScene.getWindow)
+      logStage.setTitle("Log")
+      val logScene = new Scene(new TextArea(actionsLog.mkString("\n")).modify(_.setEditable(false)), 500, 500)
+      logStage.setScene(logScene)
+      logStage.sizeToScene()
+      logStage.show()
+    }
+    
     sceneRoot.menuBar.fileMenu.importAlarms.setOnAction { _ =>
       val fileChooser = new FileChooser().modify(_.setTitle("Open calendar file"),
                                                  _.getExtensionFilters.add(new FileChooser.ExtensionFilter("Calendar File", "*.ics")))
@@ -222,18 +250,28 @@ class MainApplication extends BaseApplication {
     def undo() = alarms.synchronized { importedAlarms foreach (ia => alarms.removeIf(_.alarm == ia.alarm)) }
   }
   
-  val undoQueue = collection.mutable.Stack.empty[Action]
-  val redoQueue = collection.mutable.Stack.empty[Action]
+  var undoQueue = List.empty[Action]
+  var redoQueue = List.empty[Action]
+  var actionsLog = List.empty[String]
   
   def `do`(a: Action): Unit = {
-    undoQueue push a
-    a.`do`()
+    actionsLog ::= s"${wallClock.instant} doing $a"
+    undoQueue ::= a
+    Try(a.`do`()).failed.foreach (e => actionsLog ::= e.getStackTrace.mkString("\n"))
+    actionsLog = actionsLog.take(20)
   }
-  def redo() = `do`(redoQueue.pop)
+  def redo() = {
+    val head :: tail = redoQueue
+    redoQueue = tail
+    `do`(head)
+  }
   def undo(): Unit = {
-    val elem = undoQueue.pop
-    redoQueue push elem
-    elem.undo()
+    val elem :: rest = undoQueue
+    actionsLog ::= s"${wallClock.instant} undoing $elem"
+    undoQueue = rest
+    redoQueue ::= elem
+    Try(elem.undo()).failed.foreach (e => actionsLog ::= e.getStackTrace.mkString("\n"))
+    actionsLog = actionsLog.take(20)
   }
   
   /****************************************************
@@ -283,9 +321,10 @@ class MainApplication extends BaseApplication {
     Platform.runLater { () =>
       val now = wallClock.instant()
       val message = state.alarm.message.get()
+      val editButton = new ButtonType("🗔 edit")
       val deferButton = new ButtonType("⏰ defer")
       val alert = Utils.newAlert(sceneRoot.getScene)(Utils.instantToUserString(state.nextOccurrence), message.fold(_.toString, identity), state.alarm.foregroundColor,
-                                                     state.alarm.backgroundColor, state.alarm.font, deferButton, ButtonType.OK)
+                                                     state.alarm.backgroundColor, state.alarm.font, editButton, deferButton, ButtonType.OK)
       showingAlarms(state.alarm) = alert
       alert.showAndWait().ifPresent {
         case `deferButton` =>
@@ -301,6 +340,20 @@ class MainApplication extends BaseApplication {
             alarms.set(alarms.indexOf(state), next)
           } else {
             showAlarm(state) //trigger again showing this alarm
+          }
+          
+        case `editButton` =>
+          val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(state.alarm))
+          var resAlarm: Option[Alarm] = None
+          dialog.okButton.setOnAction { _ =>
+            resAlarm = Some(dialog.getAlarm)
+            dialog.close()
+          }
+          dialog.showAndWait()
+          resAlarm.fold {
+            showAlarm(state) //trigger again showing this alarm
+          } { n =>
+            `do`(EditAlarm(state, n))
           }
           
         case ButtonType.OK =>

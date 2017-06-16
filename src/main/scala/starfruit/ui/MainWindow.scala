@@ -19,6 +19,8 @@ class MainWindow extends BorderPane { $ =>
       val importAlarms = $ \ new MenuItem("Import Alarms...")
 //      val exportSelectedAlarms = $ \ new MenuItem("Export Selected Alarms...")
       $ \ new SeparatorMenuItem
+      val viewLog = $ \ new MenuItem("View log")
+      $ \ new SeparatorMenuItem
       val exit = $ \ new MenuItem("_Quit")
     }
 //    val editMenu = $ \ new Menu("Edit") { $ =>
