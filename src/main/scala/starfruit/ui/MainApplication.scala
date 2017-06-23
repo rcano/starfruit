@@ -326,46 +326,50 @@ class MainApplication extends BaseApplication {
       val alert = Utils.newAlert(sceneRoot.getScene)(Utils.instantToUserString(state.nextOccurrence), message.fold(_.toString, identity), state.alarm.foregroundColor,
                                                      state.alarm.backgroundColor, state.alarm.font, editButton, deferButton, ButtonType.OK)
       showingAlarms(state.alarm) = alert
-      alert.showAndWait().ifPresent {
-        case `deferButton` =>
-          val newAtTime = new DeferToDialog().modify(_.getDialogPane.getScene.getStylesheets.addAll(sceneRoot.getScene.getStylesheets)).showAndWait()
-          if (newAtTime.isPresent) {
-            val next = newAtTime.get match {
-              case Alarm.AtTime(localDate, localTime) => 
-                state.copy(nextOccurrence = ZonedDateTime.of(localDate, localTime.getOrElse(LocalTime.MIDNIGHT), ZoneId.systemDefault).toInstant, state = AlarmState.Active)
-              case Alarm.TimeFromNow(hours, minutes) =>
-                state.copy(nextOccurrence = state.nextOccurrence.plus(hours, ChronoUnit.HOURS).plus(minutes, ChronoUnit.MINUTES), state = AlarmState.Active)
+      alert.showAndWait().ifPresent { btn =>
+        showingAlarms.remove(state.alarm)
+        btn match {
+          case `deferButton` =>
+            val newAtTime = new DeferToDialog().modify(_.getDialogPane.getScene.getStylesheets.addAll(sceneRoot.getScene.getStylesheets)).showAndWait()
+            if (newAtTime.isPresent) {
+              val next = newAtTime.get match {
+                case Alarm.AtTime(localDate, localTime) => 
+                  state.copy(nextOccurrence = ZonedDateTime.of(localDate, localTime.getOrElse(LocalTime.MIDNIGHT), ZoneId.systemDefault).toInstant, state = AlarmState.Active)
+                case Alarm.TimeFromNow(hours, minutes) =>
+                  state.copy(nextOccurrence = state.nextOccurrence.plus(hours, ChronoUnit.HOURS).plus(minutes, ChronoUnit.MINUTES), state = AlarmState.Active)
+              }
+              println("Deferring alarm to " + next)
+              alarms.set(alarms.indexOf(state), next)
+            
+            } else {
+              showAlarm(state) //trigger again showing this alarm
             }
-            println("Deferring alarm to " + next)
-            alarms.set(alarms.indexOf(state), next)
-          } else {
-            showAlarm(state) //trigger again showing this alarm
-          }
           
-        case `editButton` =>
-          val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(state.alarm))
-          var resAlarm: Option[Alarm] = None
-          dialog.okButton.setOnAction { _ =>
-            resAlarm = Some(dialog.getAlarm)
-            dialog.close()
-          }
-          dialog.showAndWait()
-          resAlarm.fold {
-            showAlarm(state) //trigger again showing this alarm
-          } { n =>
-            `do`(EditAlarm(state, n))
-          }
+          case `editButton` =>
+            val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(state.alarm))
+            var resAlarm: Option[Alarm] = None
+            dialog.okButton.setOnAction { _ =>
+              resAlarm = Some(dialog.getAlarm)
+              dialog.close()
+            }
+            dialog.showAndWait()
+            resAlarm.fold {
+              showAlarm(state) //trigger again showing this alarm
+            } { n =>
+              `do`(EditAlarm(state, n))
+            }
           
-        case ButtonType.OK =>
-          //must run this later, to ensure the alarms where properly updated
-          Platform.runLater { () =>
-            val futureInstances = Iterator.iterate(AlarmStateMachine.advanceAlarm(state.copy(state = AlarmState.Active)))(
-              AlarmStateMachine.advanceAlarm).filter(s => s.nextOccurrence.isAfter(now) || s.state == AlarmState.Ended)
-            val next = futureInstances.next()
-            println("Advancing alarm to " + next)
-            if (next.state == AlarmState.Ended) alarms.remove(state)
-            else alarms.set(alarms.indexOf(state), next)
-          }
+          case ButtonType.OK =>
+            //must run this later, to ensure the alarms where properly updated
+            Platform.runLater { () =>
+              val futureInstances = Iterator.iterate(AlarmStateMachine.advanceAlarm(state.copy(state = AlarmState.Active)))(
+                AlarmStateMachine.advanceAlarm).filter(s => s.nextOccurrence.isAfter(now) || s.state == AlarmState.Ended)
+              val next = futureInstances.next()
+              println("Advancing alarm to " + next)
+              if (next.state == AlarmState.Ended) alarms.remove(state)
+              else alarms.set(alarms.indexOf(state), next)
+            }
+        }
       }
     }
   }
