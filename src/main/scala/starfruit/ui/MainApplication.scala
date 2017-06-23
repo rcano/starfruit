@@ -120,7 +120,10 @@ class MainApplication extends BaseApplication {
     sceneRoot.toolBar.deleteButton.setOnAction { _ =>
       val selected = alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))
       if (!showingAlarms.contains(selected.alarm)) {
-        `do`(DeleteAlarm(selected))
+        new Alert(Alert.AlertType.CONFIRMATION, s"Do you really wish to delete the alarm\n${selected.alarm.message.get.fold(_.toString, identity)}?." + 
+                  "\nThis operation is only undoable as long as you don't close the application.").showAndWait().ifPresent {
+          case ButtonType.OK => `do`(DeleteAlarm(selected))
+        }
       }
     }
     sceneRoot.toolBar.undoButton.setDisable(true)
