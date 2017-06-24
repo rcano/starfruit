@@ -80,7 +80,7 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
       val weight = Option(FontWeight.findByName(style))
       val posture = Option(FontPosture.findByName(style))
       weight map (Font.font(font.drop(1).dropRight(1), _, size.toFloat)) orElse (posture map (Font.font(font.drop(1).dropRight(1), _, size.toFloat))) getOrElse
-        Font.font(font.drop(1).dropRight(1), size.toFloat)
+      Font.font(font.drop(1).dropRight(1), size.toFloat)
     }
     alarmPane.action.fontSelectorDialog.fontPane.setFont(font)
     alarmPane.action.alarmMode.message.setFont(font)
@@ -157,7 +157,7 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
     }
     def setDayOfMonth(dof: Alarm.DayOfMonth, ms: MonthSelection): Unit = dof match {
       case Alarm.NthDayOfMonth(day) =>
-        ms.onDayMode.setSelected(true)
+        ms.onDayMode.fire()
         ms.onDay.getSelectionModel.select(if (day == -1) "Last" else day.toString)
       case Alarm.NthWeekDayOfMonth(day, dayOfWeek) =>
         ms.onTheDayNumber.getSelectionModel.select(day match {
@@ -175,21 +175,21 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
         ms.onTheDayDay.getItems.asScala.find(dayOfWeek.toString.equalsIgnoreCase) foreach (ms.onTheDayDay.getSelectionModel.select)
     }
     rec match {
-      case Alarm.NoRecurrence => recurrencePane.recurrenceRule.noRecurrence.setSelected(true)
+      case Alarm.NoRecurrence => recurrencePane.recurrenceRule.noRecurrence.fire()
       case rec: Alarm.HourMinutelyRecurrence => 
-        recurrencePane.recurrenceRule.hourlyMinutely.setSelected(true)
+        recurrencePane.recurrenceRule.hourlyMinutely.fire()
         recurrencePane.recurrenceRule.hourlyMinutely.pane.hourPicker.modify(_.hours.getValueFactory.setValue(rec.hours), _.minutes.getValueFactory.setValue(rec.minutes))
       case rec: Alarm.DailyRecurrence =>
-        recurrencePane.recurrenceRule.daily.setSelected(true)
+        recurrencePane.recurrenceRule.daily.fire()
         recurrencePane.recurrenceRule.daily.pane.modify(_.days.getValueFactory.setValue(rec.every), setDays(rec.onDays, _))
       case rec: Alarm.WeeklyRecurrence =>
-        recurrencePane.recurrenceRule.weekly.setSelected(true)
+        recurrencePane.recurrenceRule.weekly.fire()
         recurrencePane.recurrenceRule.weekly.pane.modify(_.weeks.getValueFactory.setValue(rec.every), setDays(rec.onDays, _))
       case rec: Alarm.MonthlyRecurrence =>
-        recurrencePane.recurrenceRule.monthly.setSelected(true)
+        recurrencePane.recurrenceRule.monthly.fire()
         recurrencePane.recurrenceRule.monthly.pane.modify(_.months.getValueFactory.setValue(rec.every), setDayOfMonth(rec.on, _))
       case rec: Alarm.YearlyRecurrence =>
-        recurrencePane.recurrenceRule.yearly.setSelected(true)
+        recurrencePane.recurrenceRule.yearly.fire()
         recurrencePane.recurrenceRule.yearly.pane.modify(
           _.years.getValueFactory.setValue(rec.every),
           setDayOfMonth(rec.dayOfMonth, _),
