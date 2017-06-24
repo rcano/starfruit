@@ -31,7 +31,7 @@ class AlarmPane extends VBox { $ =>
     
     sealed trait AlarmType extends Pane
     object alarmMode extends StackPane with AlarmType { $ =>
-      val message = $ \ new TextArea
+      val message = $ \ new TextArea().modify(_.setPrefRowCount(4), _.setMinHeight(Region.USE_PREF_SIZE))
     }
     
     object fileContentsMode extends HBox with AlarmType { $ =>
@@ -47,7 +47,7 @@ class AlarmPane extends VBox { $ =>
     object commandOutputMode extends VBox with AlarmType { $ =>
       setSpacing(10)
       $ \ new Label("Script")
-      val script = $ \ new TextArea()
+      val script = $ \ new TextArea().modify(_.setPrefRowCount(4), _.setMinHeight(Region.USE_PREF_SIZE))
     }
     val selectedMode = new SimpleObjectProperty[AlarmType](alarmMode)
     val actionType = combobox("Text message", "File Contents", "Command output")
