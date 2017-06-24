@@ -85,40 +85,51 @@ class MainApplication extends BaseApplication {
     /*************************************
      * UI tunning
      *************************************/
-    sceneRoot.toolBar.newButton.displayAlarm setOnAction { _ =>
-      val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, None)
+    
+    def showEditAlarmDialog(baseAlarm: Option[Alarm]) = {
+      val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, baseAlarm)
       var resAlarm: Option[Alarm] = None
       dialog.okButton.setOnAction { _ =>
-        resAlarm = Some(dialog.getAlarm)
-        dialog.close()
+        val alarm = dialog.getAlarm
+        val now = wallClock.instant
+        val nextOccurrence = AlarmState(alarm, AlarmState.Active, now).nextOccurrence
+        if (nextOccurrence.isBefore(now) && (baseAlarm.isEmpty || baseAlarm.get.when != alarm.when || baseAlarm.get.recurrence != alarm.recurrence)) {
+          val date = LocalDateTime.ofInstant(nextOccurrence, ZoneId.systemDefault)
+          new Alert(Alert.AlertType.CONFIRMATION, s"The alarm has a next ocurrence [${sceneRoot.alarmsTable.timeCol.formatter.format(date)}]" + 
+                    " which is before now.\nAre you sure you wish to create it like this?").modify(
+            _.setResizable(true),
+            a => {
+              a.getDialogPane.setPrefHeight(350)
+              a.getDialogPane.setPrefWidth(550)
+            }
+          ).showAndWait().ifPresent {
+            case ButtonType.OK =>
+              resAlarm = Some(alarm)
+              dialog.close()
+            case _ =>
+          }
+        } else {
+          resAlarm = Some(alarm)
+          dialog.close()
+        }
       }
       dialog.showAndWait()
-      resAlarm foreach { alarm => `do`(NewAlarm(alarm)) }
+      resAlarm
+    }
+    
+    sceneRoot.toolBar.newButton.displayAlarm setOnAction { _ =>
+      showEditAlarmDialog(None) foreach { alarm => `do`(NewAlarm(alarm)) }
     }
     Seq(sceneRoot.toolBar.copyButton, sceneRoot.toolBar.editButton, sceneRoot.toolBar.deleteButton) foreach (
       _.disableProperty bind sceneRoot.alarmsTable.getSelectionModel.selectedItemProperty.isNull)
     sceneRoot.toolBar.copyButton.setOnAction { _ =>
       val selected = alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))
-      val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(selected.alarm))
-      var resAlarm: Option[Alarm] = None
-      dialog.okButton.setOnAction { _ =>
-        resAlarm = Some(dialog.getAlarm)
-        dialog.close()
-      }
-      dialog.showAndWait()
-      resAlarm foreach (n => `do`(NewAlarm(n)))
+      showEditAlarmDialog(Some(selected.alarm)) foreach (n => `do`(NewAlarm(n)))
     }
     sceneRoot.toolBar.editButton.setOnAction { _ =>
       val selected = alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))
       if (!showingAlarms.contains(selected.alarm)) {
-        val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(selected.alarm))
-        var resAlarm: Option[Alarm] = None
-        dialog.okButton.setOnAction { _ =>
-          resAlarm = Some(dialog.getAlarm)
-          dialog.close()
-        }
-        dialog.showAndWait()
-        resAlarm foreach (n => `do`(EditAlarm(selected, n)))
+        showEditAlarmDialog(Some(selected.alarm)) foreach (n => `do`(EditAlarm(selected, n)))
       }
     }
     sceneRoot.alarmsTable.setOnMouseClicked { evt => 
@@ -256,7 +267,14 @@ class MainApplication extends BaseApplication {
     def undo() = alarms.synchronized { alarms.add(alarm) }
   }
   case class EditAlarm(old: AlarmState, updated: Alarm) extends Action {
-    def `do`() = alarms.synchronized { alarms.set(alarms.indexOf(old), AlarmState(updated, AlarmState.Active, wallClock.instant)) }
+    def `do`() = alarms.synchronized {
+      val newAlarm = if (updated.when != old.alarm.when || updated.recurrence != old.alarm.recurrence) {
+        AlarmState(updated, AlarmState.Active, wallClock.instant)
+      } else {
+        old.copy(alarm = updated)
+      }
+      alarms.set(alarms.indexOf(old), newAlarm)
+    }
     def undo() = alarms.synchronized { alarms.set(alarms.asScala.indexWhere(_.alarm eq updated), old) }
   }
   case class ImportAlarms(importedAlarms: Seq[AlarmState]) extends Action {
