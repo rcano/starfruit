@@ -193,7 +193,7 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
         recurrencePane.recurrenceRule.yearly.pane.modify(
           _.years.getValueFactory.setValue(rec.every),
           setDayOfMonth(rec.dayOfMonth, _),
-          _.months.zipWithIndex.filter(e => rec.onMonths.contains(Month.of(e._2))).foreach(_._1.setSelected(true)),
+          _.months.zipWithIndex.filter(e => rec.onMonths.contains(Month.of(e._2 + 1))).foreach(_._1.setSelected(true)),
           _.onFeb29.getSelectionModel.select(rec.onFebruary29NonLeapAction.fold("None") {
               case Alarm.February29NonLeapAction.MovePrevDay => "28 Feb"
               case Alarm.February29NonLeapAction.MoveNextDay => "1 Mar"
