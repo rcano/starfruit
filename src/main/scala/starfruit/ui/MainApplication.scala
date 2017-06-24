@@ -11,7 +11,7 @@ import javafx.collections.transformation.SortedList
 import javafx.scene.Scene
 import javafx.scene.control._
 import javafx.scene.image.Image
-import javafx.scene.input.{KeyCode, KeyCombination, KeyEvent}
+import javafx.scene.input.{KeyCode, KeyCombination, KeyEvent, MouseButton}
 import javafx.scene.paint.Color
 import javafx.scene.text.Font
 import javafx.stage.FileChooser
@@ -120,6 +120,9 @@ class MainApplication extends BaseApplication {
         dialog.showAndWait()
         resAlarm foreach (n => `do`(EditAlarm(selected, n)))
       }
+    }
+    sceneRoot.alarmsTable.setOnMouseClicked { evt => 
+      if (evt.getClickCount == 2 && evt.getButton == MouseButton.PRIMARY && !sceneRoot.toolBar.editButton.isDisabled()) sceneRoot.toolBar.editButton.fire()
     }
     sceneRoot.toolBar.deleteButton.setOnAction { _ =>
       val selected = alarms.get(alarmsTableSortedList.getSourceIndex(sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex))
