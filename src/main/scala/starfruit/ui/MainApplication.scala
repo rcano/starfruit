@@ -16,6 +16,7 @@ import javafx.scene.paint.Color
 import javafx.scene.text.Font
 import javafx.stage.FileChooser
 import javafx.stage.Stage
+import org.controlsfx.dialog.ExceptionDialog
 import org.controlsfx.validation.ValidationMessage
 import org.controlsfx.validation.decoration.GraphicValidationDecoration
 import prickle._, AlarmPicklers._
@@ -43,36 +44,39 @@ class MainApplication extends BaseApplication {
   implicit val pconfig = PConfig.Default.copy(areSharedObjectsSupported = false)
 
   val alarmsFile = File.home / ".starfruit-alarms"
+  val alarmsGraveyard = File.home / ".starfruit-graveyard"
   val alarms = javafx.collections.FXCollections.observableArrayList[AlarmState]()
   
-  val alarmsTableSortedList = new SortedList(new FxCollectionsExtra.ObservableView(alarms)({ s =>
-        val recString = s.alarm.recurrence match {
-          case Alarm.NoRecurrence => "no recurrence"
-          case Alarm.HourMinutelyRecurrence(h, m) => s"${h}H ${m}M"
-          case Alarm.DailyRecurrence(every, _) => s"every ${every} day(s)"
-          case Alarm.WeeklyRecurrence(every, onDays) => s"every ${every} week(s), ${onDays.size} days a week."
-          case Alarm.MonthlyRecurrence(every, Alarm.NthDayOfMonth(d)) => s"every ${every} month(s), on the $d"
-          case Alarm.MonthlyRecurrence(every, Alarm.NthWeekDayOfMonth(week, day)) =>
-            week match {
-              case -5 | -4 => s"every ${every} month(s), the ${week}th last $day"
-              case -3 => s"every ${every} month(s), the 3rd last $day"
-              case -2 => s"every ${every} month(s), the 2nd last $day"
-              case -1 => s"every ${every} month(s), the last $day"
-              case 1 => s"every ${every} month(s), the first $day"
-              case 2 => s"every ${every} month(s), the 2nd $day"
-              case 3 => s"every ${every} month(s), the 3rd $day"
-              case 4 | 5 => s"every ${every} month(s), the ${week}th $day"
-            }
+  private def alarmtState2Table(s: AlarmState) = {
+    val recString = s.alarm.recurrence match {
+      case Alarm.NoRecurrence => "no recurrence"
+      case Alarm.HourMinutelyRecurrence(h, m) => s"${h}H ${m}M"
+      case Alarm.DailyRecurrence(every, _) => s"every ${every} day(s)"
+      case Alarm.WeeklyRecurrence(every, onDays) => s"every ${every} week(s), ${onDays.size} days a week."
+      case Alarm.MonthlyRecurrence(every, Alarm.NthDayOfMonth(d)) => s"every ${every} month(s), on the $d"
+      case Alarm.MonthlyRecurrence(every, Alarm.NthWeekDayOfMonth(week, day)) =>
+        week match {
+          case -5 | -4 => s"every ${every} month(s), the ${week}th last $day"
+          case -3 => s"every ${every} month(s), the 3rd last $day"
+          case -2 => s"every ${every} month(s), the 2nd last $day"
+          case -1 => s"every ${every} month(s), the last $day"
+          case 1 => s"every ${every} month(s), the first $day"
+          case 2 => s"every ${every} month(s), the 2nd $day"
+          case 3 => s"every ${every} month(s), the 3rd $day"
+          case 4 | 5 => s"every ${every} month(s), the ${week}th $day"
+        }
             
-          case Alarm.YearlyRecurrence(every, _, _, _) => s"every ${every} year(s)"
-        }
-        val msg = s.alarm.message match {
-          case m: Alarm.TextMessage => m.message
-          case m: Alarm.ScriptOutputMessage => "script: " + m.script
-          case m: Alarm.FileContentsMessage => "file: " + m.path
-        }
-        (LocalDateTime.ofInstant(s.nextOccurrence, ZoneId.systemDefault), recString, Color.web(s.alarm.backgroundColor), "🖅", msg)
-      }))
+      case Alarm.YearlyRecurrence(every, _, _, _) => s"every ${every} year(s)"
+    }
+    val msg = s.alarm.message match {
+      case m: Alarm.TextMessage => m.message
+      case m: Alarm.ScriptOutputMessage => "script: " + m.script
+      case m: Alarm.FileContentsMessage => "file: " + m.path
+    }
+    (LocalDateTime.ofInstant(s.nextOccurrence, ZoneId.systemDefault), recString, Color.web(s.alarm.backgroundColor), "🖅", msg)
+  }
+  
+  val alarmsTableSortedList = new SortedList(new FxCollectionsExtra.ObservableView(alarms)(alarmtState2Table))
   
   override def extraInitialize(stage) = {
     stage.getIcons.add(new Image("/starfruit.png"))
@@ -123,6 +127,7 @@ class MainApplication extends BaseApplication {
         new Alert(Alert.AlertType.CONFIRMATION, s"Do you really wish to delete the alarm\n${selected.alarm.message.get.fold(_.toString, identity)}?." + 
                   "\nThis operation is only undoable as long as you don't close the application.").showAndWait().ifPresent {
           case ButtonType.OK => `do`(DeleteAlarm(selected))
+          case _ =>
         }
       }
     }
@@ -241,7 +246,10 @@ class MainApplication extends BaseApplication {
     def undo() = alarms.synchronized { alarms.removeIf(_.alarm eq alarm) }
   }
   case class DeleteAlarm(alarm: AlarmState) extends Action {
-    def `do`() = alarms.synchronized { alarms.remove(alarm) }
+    def `do`() = {
+      alarms.synchronized { alarms.remove(alarm) }
+      buryInGraveyard(alarm).failed.foreach(e => new ExceptionDialog(new Exception("Failed writing alarm to the graveyard file. Drive issues?", e)).showAndWait())
+    }
     def undo() = alarms.synchronized { alarms.add(alarm) }
   }
   case class EditAlarm(old: AlarmState, updated: Alarm) extends Action {
@@ -369,8 +377,10 @@ class MainApplication extends BaseApplication {
                 AlarmStateMachine.advanceAlarm).filter(s => s.nextOccurrence.isAfter(now) || s.state == AlarmState.Ended)
               val next = futureInstances.next()
               println("Advancing alarm to " + next)
-              if (next.state == AlarmState.Ended) alarms.remove(state)
-              else alarms.set(alarms.indexOf(state), next)
+              if (next.state == AlarmState.Ended) {
+                alarms.remove(state)
+                buryInGraveyard(state).failed.foreach(e => new ExceptionDialog(new Exception("Failed writing alarm to the graveyard file. Drive issues?", e)).showAndWait())
+              } else alarms.set(alarms.indexOf(state), next)
             }
         }
       }
@@ -386,5 +396,6 @@ class MainApplication extends BaseApplication {
     val backupFile = alarmsFile.sibling(alarmsFile.name + "~").createIfNotExists(false, false)
     backupFile.writeText(Pickle.intoString(alarms)).moveTo(alarmsFile, true)
   }
+  def buryInGraveyard(alarm: AlarmState): Try[Unit] = Try { alarmsGraveyard.appendText(Pickle.intoString(alarm) + "\n")}
   def loadAlarms(): Try[Seq[AlarmState]] = if (alarmsFile.exists()) Unpickle[Seq[AlarmState]].fromString(alarmsFile.contentAsString) else Success(Seq.empty)
 }
