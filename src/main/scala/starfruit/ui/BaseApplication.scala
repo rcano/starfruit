@@ -12,12 +12,13 @@ trait BaseApplication extends Application {
     println("named parameters " + getParameters.getNamed)
     val fontSize = getParameters.getNamed.asScala.get("fontSize").map(_.toDouble)
     if (util.Properties.isLinux || fontSize.isDefined) {
+      println("primary screen dpi " + Screen.getPrimary().getDpi)
       val systemFontSize = Screen.getPrimary().getDpi match {
-        case -1 => fontSize
-        case screenDpi=> Some(screenDpi / 6) // 12 points
+        case -1 => None
+        case screenDpi=> Some(screenDpi / 12) // 12 points
       }
       
-      systemFontSize foreach (systemFontSize => classOf[com.sun.javafx.font.PrismFontFactory].getDeclaredField("systemFontSize").
+      fontSize.orElse(systemFontSize) foreach (systemFontSize => classOf[com.sun.javafx.font.PrismFontFactory].getDeclaredField("systemFontSize").
                               modify(_.setAccessible(true)).setFloat(null, systemFontSize.toFloat))
     }
   }

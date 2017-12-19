@@ -40,7 +40,7 @@ object InstanceDetector {
             }
           } catch { case _: Exception => }
         }
-      }, "Instance listener", 1024l)
+      }, "Instance listener", 200*1024l)
     thread.setDaemon(true)
     thread.start()
   }

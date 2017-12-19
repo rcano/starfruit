@@ -1,47 +1,50 @@
 package starfruit.ui
 
+/**
+ * Main application used during developement for hot reloading of the application using classloaders magic.
+ */
 import com.sun.javafx.application.ParametersImpl
 import java.io.IOException
 import java.net.URLClassLoader
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{ Files , StandardWatchEventKinds, FileVisitor, FileVisitResult, Path , WatchEvent }
+import java.nio.file.{ Files , StandardWatchEventKinds, FileVisitor, FileVisitResult, Path, Paths , WatchEvent }
 import javafx.application.Application
 import javafx.application.Platform
 import scala.collection.JavaConverters._
 
-/**
- * Main application used during developement for hot reloading of the application using classloaders magic.
- */
 object DevAppReloader {
   def main(args: Array[String]) = {
     System.setProperty("prism.lcdtext", "false")
     System.setProperty("prism.text", "t2k")
     Application.launch(classOf[DevAppReloader], args:_*)
   }
-  
 }
 class DevAppReloader extends Application {
 
   override def init(): Unit = {
     //install a monitor on the classes to detect a change
-    val classesDir = new java.io.File(getClass.getResource("/").toURI).toPath
-    val fileWatcher = classesDir.getFileSystem.newWatchService
-    Files.walkFileTree(classesDir, new FileVisitor[Path] {
-        override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes) = {
-          dir.register(fileWatcher, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY)
-          FileVisitResult.CONTINUE
-        }
-        override def postVisitDirectory(dir: Path, excec: IOException) = {
-          FileVisitResult.CONTINUE
-        }
-        override def visitFile(file: Path, attrs: BasicFileAttributes) = {
-          FileVisitResult.CONTINUE
-        }
-        override def visitFileFailed(file: Path, excec: IOException) = {
-          FileVisitResult.TERMINATE
-        }
-      })
-    classesDir.register(fileWatcher, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY)
+    val classesDirectories = getClass.getClassLoader.asInstanceOf[URLClassLoader].getURLs.collect { 
+      case u if Files.isDirectory(Paths.get(u.toURI)) => Paths.get(u.toURI)
+    }
+    val fileWatcher = classesDirectories.head.getFileSystem.newWatchService
+    classesDirectories foreach { classesDir =>
+      Files.walkFileTree(classesDir, new FileVisitor[Path] {
+          override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes) = {
+            dir.register(fileWatcher, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY)
+            FileVisitResult.CONTINUE
+          }
+          override def postVisitDirectory(dir: Path, excec: IOException) = {
+            FileVisitResult.CONTINUE
+          }
+          override def visitFile(file: Path, attrs: BasicFileAttributes) = {
+            FileVisitResult.CONTINUE
+          }
+          override def visitFileFailed(file: Path, excec: IOException) = {
+            FileVisitResult.TERMINATE
+          }
+        })
+      classesDir.register(fileWatcher, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY)
+    }
 
     new Thread("ClassesChangesWatcher") {
       override def run(): Unit = {
@@ -95,7 +98,7 @@ class DevAppReloader extends Application {
 
           val loader = new URLClassLoader(Array(getClass.getResource("/"))) {
             //override default class loader behaviour to prioritize classes in this classloader
-            override def loadClass(name, resolve): Class[_] = {
+            override def loadClass(name: String, resolve: Boolean): Class[_] = {
               var res: Class[_] = findLoadedClass(name)
               val startTime = System.currentTimeMillis
               while (res == null && System.currentTimeMillis - startTime < 5000) {//will retry for an entire second for this class to appear
@@ -111,14 +114,10 @@ class DevAppReloader extends Application {
             }
           }
 
-          try {
-            lastApplication = loader.loadClass(getParameters.getRaw.get(0)).newInstance.asInstanceOf[Application]
-            ParametersImpl.registerParameters(lastApplication, getParameters)
-            lastApplication.init()
-            lastApplication.start(primaryStage)
-          } catch {
-            case e: Exception => e.printStackTrace()
-          }
+          lastApplication = loader.loadClass(getParameters.getRaw.get(0)).newInstance.asInstanceOf[Application]
+          ParametersImpl.registerParameters(lastApplication, getParameters)
+          lastApplication.init()
+          lastApplication.start(primaryStage)
           recompiling = false
         }
       }
@@ -126,7 +125,7 @@ class DevAppReloader extends Application {
   }
 
   var primaryStage: javafx.stage.Stage = _
-  override def start(stage): Unit = {
+  override def start(stage: javafx.stage.Stage): Unit = {
     primaryStage = stage
     reloadApp()
   }

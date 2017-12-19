@@ -1,6 +1,6 @@
 name := "starfruit"
 version := "1.0"
-scalaVersion := "2.12.2"
+scalaVersion := "2.12.4"
 scalacOptions ++= Seq("-deprecation", "-feature", "-Yinfer-argument-types", "-Ypartial-unification", "-Xlint", "-opt:_", "-opt-warnings:_")
 fork := true
 
@@ -36,3 +36,5 @@ assemblyShadeRules in assembly := Seq(
   ShadeRule.keep("fastparse.**").inAll,
   ShadeRule.keep("sourcecode.**").inAll
 )
+
+//coursierChecksums := Nil

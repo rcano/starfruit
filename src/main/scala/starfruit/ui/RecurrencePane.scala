@@ -70,9 +70,11 @@ class RecurrencePane extends VBox { $ =>
     
     selectedRecurrence.addListener { (_, _, pane) =>
       val children = getChildren.asScala
+      println("removing " + children.last + " in order to add " + pane)
       children -= children.last
       children += pane
     }
+    println("listener is fully there for fuck sake")
   }
   $ \ new TitledVBox("Recurrence Rule", spacing = 10) \ recurrenceRule
   
