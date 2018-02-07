@@ -48,6 +48,7 @@ class AlarmPane extends VBox { $ =>
       setSpacing(10)
       $ \ new Label("Script")
       val script = $ \ new TextArea().modify(_.setPrefRowCount(4), _.setMinHeight(Region.USE_PREF_SIZE))
+      VBox.setVgrow(script, Priority.ALWAYS)
     }
     val selectedMode = new SimpleObjectProperty[AlarmType](alarmMode)
     val actionType = combobox("Text message", "File Contents", "Command output")
@@ -201,6 +202,7 @@ class AlarmPane extends VBox { $ =>
       $ right vbox(fontAndColor, specialActions)(spacing = 10, fillWidth = true)
     }
   }
+  VBox.setVgrow(action, Priority.ALWAYS)
   
   val time = $ \ new TitledVBox("Time", 10) { $ =>
     val mode = new ToggleGroup()
@@ -225,24 +227,27 @@ class AlarmPane extends VBox { $ =>
                  Seq(timeFromNow, timeFromNowTime))
   }
   
-  val extra = $ \ new TitledVBox("Extra", 20) { $ =>
-    val reminder = new CheckBox("Reminder:")
-    val reminderDurationPicker = new DurationPicker(DurationPicker.All:_*)
-    val reminderType = combobox("in advance", "afterwards")
-    val reminderForFirstRecurrenceOnly = new CheckBox("Reminder for first recurrence only")
+  
+  val extra = new VBox { $ =>
+      setSpacing(20)
+      val reminder = new CheckBox("Reminder:")
+      val reminderDurationPicker = new DurationPicker(DurationPicker.All:_*)
+      val reminderType = combobox("in advance", "afterwards")
+      val reminderForFirstRecurrenceOnly = new CheckBox("Reminder for first recurrence only")
     
-    val cancelIfLate = new CheckBox("Cancel if late by")
-    val cancelDurationPicker = new DurationPicker(DurationPicker.All:_*)
-    val cancelAutoClose = new CheckBox("Auto-close window after this time")
+      val cancelIfLate = new CheckBox("Cancel if late by")
+      val cancelDurationPicker = new DurationPicker(DurationPicker.All:_*)
+      val cancelAutoClose = new CheckBox("Auto-close window after this time")
     
-    $ \ hbox(reminder, reminderDurationPicker, reminderType)(10)
-    $ \ hbox(new Region().modify(_.setPrefWidth(50)), reminderForFirstRecurrenceOnly)
-    $ \ hbox(cancelIfLate, cancelDurationPicker)(10)
-    $ \ hbox(new Region().modify(_.setPrefWidth(50)), cancelAutoClose)
+      $ \ hbox(reminder, reminderDurationPicker, reminderType)(10)
+      $ \ hbox(new Region().modify(_.setPrefWidth(50)), reminderForFirstRecurrenceOnly)
+      $ \ hbox(cancelIfLate, cancelDurationPicker)(10)
+      $ \ hbox(new Region().modify(_.setPrefWidth(50)), cancelAutoClose)
     
-    Seq(reminderDurationPicker, reminderType, reminderForFirstRecurrenceOnly).foreach(_.disableProperty bind reminder.selectedProperty.not)
-    Seq(cancelDurationPicker, cancelAutoClose).foreach(_.disableProperty bind cancelIfLate.selectedProperty.not)
-  }
+      Seq(reminderDurationPicker, reminderType, reminderForFirstRecurrenceOnly).foreach(_.disableProperty bind reminder.selectedProperty.not)
+      Seq(cancelDurationPicker, cancelAutoClose).foreach(_.disableProperty bind cancelIfLate.selectedProperty.not)
+    }
+    val extraTitledPane = $ \ new TitledPane("Extra", extra).modify(_.setAnimated(false), _.setExpanded(false))
 }
 
 

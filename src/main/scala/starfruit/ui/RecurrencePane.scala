@@ -110,12 +110,12 @@ class RecurrencePane extends VBox { $ =>
   
   $ \ new TitledVBox("Recurrence End", spacing = 10) \ recurrenceEnd
   
-  val exceptions = $ \ new BorderPane { $ =>
+  val exceptions = new BorderPane { $ =>
     setStyle("-fx-border-color: darkgray; -fx-border-width: 1px; -fx-border-radius: 4px")
-    $ top new Label("Exceptions") {
-      BorderPane.setMargin(this, new Insets(10,10, 0, 10))
-      BorderPane.setAlignment(this, Pos.CENTER)
-    }
+//    $ top new Label("Exceptions") {
+//      BorderPane.setMargin(this, new Insets(10,10, 0, 10))
+//      BorderPane.setAlignment(this, Pos.CENTER)
+//    }
     
     val exceptionsList = $ center new ListView[LocalDate] {
       BorderPane.setMargin(this, new Insets(10, 5, 10, 10))
@@ -170,6 +170,8 @@ class RecurrencePane extends VBox { $ =>
       exceptionDate.setValue(null)
     }
   }
+  
+  val exceptionsTitledPane = $ \ new TitledPane("Exceptions", exceptions).modify(_.setAnimated(false), _.setExpanded(false))
   
   //enablement dependency logic
   val isNoRecurrence = recurrenceRule.selectedRecurrence.map[java.lang.Boolean] { 

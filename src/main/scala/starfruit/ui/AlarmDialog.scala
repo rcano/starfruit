@@ -22,10 +22,13 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
   val alarmPane = new AlarmPane()
   val recurrencePane = new RecurrencePane()
   
-  val extraButton = new ToggleButton("More options >>")
-  extraButton.selectedProperty.addListener((_, _, selected) => extraButton.setText(if (selected) "Less Options <<" else "More Options >>" ))
-  alarmPane.extra.visibleProperty bind extraButton.selectedProperty
-  recurrencePane.exceptions.visibleProperty bind extraButton.selectedProperty
+//  val extraButton = new ToggleButton("More options >>")
+//  extraButton.selectedProperty.addListener((_, _, selected) => extraButton.setText(if (selected) "Less Options <<" else "More Options >>" ))
+//  alarmPane.extra.visibleProperty bind extraButton.selectedProperty
+//  recurrencePane.exceptions.visibleProperty bind extraButton.selectedProperty
+  Seq(alarmPane.extraTitledPane, recurrencePane.exceptionsTitledPane).foreach(_.expandedProperty.addListener { (_, _, _) =>
+      Platform.runLater(() => sizeToScene()) //let it calculate desired size, and then size to scene
+    })
   
   val tryButton = new Button("Try")
   val okButton = new Button("✓ Ok")
@@ -51,7 +54,7 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
         
         $ bottom new BorderPane { $ =>
           BorderPane.setMargin(this, new Insets(10, 0, 0, 0))
-          $ left extraButton
+//          $ left extraButton
           $ right hbox(tryButton, okButton, cancelButton)(10, alignment = Pos.CENTER_RIGHT)
         }
       }).modify(_.getStylesheets.addAll(parent.getScene.getStylesheets)))

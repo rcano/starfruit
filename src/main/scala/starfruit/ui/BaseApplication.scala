@@ -17,9 +17,11 @@ trait BaseApplication extends Application {
         case -1 => None
         case screenDpi=> Some(screenDpi / 12) // 12 points
       }
-      
-      fontSize.orElse(systemFontSize) foreach (systemFontSize => classOf[com.sun.javafx.font.PrismFontFactory].getDeclaredField("systemFontSize").
-                              modify(_.setAccessible(true)).setFloat(null, systemFontSize.toFloat))
+      fontSize.orElse(systemFontSize) foreach (systemFontSize => sys.props("com.sun.javafx.fontSize") = systemFontSize.toString)
+    }
+    if (util.Properties.isLinux) {
+      System.setProperty("prism.lcdtext", "false")
+      System.setProperty("prism.text", "t2k")
     }
   }
   def start(stage): Unit = {

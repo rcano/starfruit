@@ -23,9 +23,10 @@ class DevAppReloader extends Application {
 
   override def init(): Unit = {
     //install a monitor on the classes to detect a change
-    val classesDirectories = getClass.getClassLoader.asInstanceOf[URLClassLoader].getURLs.collect { 
-      case u if Files.isDirectory(Paths.get(u.toURI)) => Paths.get(u.toURI)
-    }
+    val classesDirectories = Array(Paths.get("target/scala-2.12/classes"), Paths.get("target/scala-2.12/test-classes"))
+//    val classesDirectories = getClass.getClassLoader.asInstanceOf[URLClassLoader].getURLs.collect { 
+//      case u if Files.isDirectory(Paths.get(u.toURI)) => Paths.get(u.toURI)
+//    }
     val fileWatcher = classesDirectories.head.getFileSystem.newWatchService
     classesDirectories foreach { classesDir =>
       Files.walkFileTree(classesDir, new FileVisitor[Path] {
