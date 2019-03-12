@@ -1,6 +1,6 @@
 package starfruit
 
-import fastparse.all._
+import fastparse._, NoWhitespace._
 import java.time._
 import java.time.format.DateTimeFormatter
 import java.util.EnumSet
@@ -13,16 +13,17 @@ object ICalendar {
   }
   case class Entry(name: String, valueType: Option[String], value: String) extends Element
   
-  lazy val element: Parser[Element] = P( section | entry )
-  lazy val section = P( "BEGIN:" ~ name.! flatMap (name => nl ~ element.rep ~ s"END:$name" ~ nl map (elems => Section(name, elems))) )
-  lazy val entry = P( !"END" ~ name.! ~ (";" ~ name ~ "=" ~ name).!.? ~ ":" ~ (P("\r\n ").map(p => ' ') | !nl ~ AnyChar).rep.! ~ nl ).map((Entry.apply _).tupled)
-  lazy val name = P( CharPred { case ';' | ':' | '=' | '\r' | '\n' => false; case _ => true }.rep(min=1) )
-  lazy val nl = P("\r\n" | "\n")
+  def element[_: P]: P[Element] = P( section | entry )
+  def section[_: P] = P( "BEGIN:" ~ name.! flatMap (name => nl ~ element.rep ~ s"END:$name" ~ nl map (elems => Section(name, elems))) )
+  def entry[_: P] = P( !"END" ~ name.! ~ (";" ~ name ~ "=" ~ name).!.? ~ ":" ~ (P("\r\n ").map(p => ' ') | !nl ~ AnyChar).rep.! ~ nl ).map((Entry.apply _).tupled)
+  def name[_: P] = P( CharPred { case ';' | ':' | '=' | '\r' | '\n' => false; case _ => true }.rep(1) )
+  def nl[_: P] = P("\r\n" | "\n")
   
   def parse(ical: String, defaultFont: String): Try[Seq[AlarmState]] = Try {
     val gmtDateParser = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssVV")
     val localDateParser = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
-    section.parse(ical) match {
+    
+    fastparse.parse(ical, section(_)) match {
       case Parsed.Success(vcalendar, idx) => 
         vcalendar.elements.collect {
           case vevent@ Section("VEVENT", elements) => 
@@ -42,7 +43,7 @@ object ICalendar {
               val parts = s.split("\\\\;")
               parts.indexOf("LATECLOSE") match {
                 case -1 => None
-                case idx => Some(Alarm.CancelIfLateBy(Duration.ofMinutes(parts(idx + 1).toInt), true))
+                case idx => Some(Alarm.CancelIfLateBy(Duration.ofMinutes(parts(idx + 1).toLong), true))
               }
             }
             val (recurrence, end) = vevent.field[Entry]("RRULE").map(_.value.split(";").map { entry =>
@@ -108,7 +109,7 @@ object ICalendar {
               AlarmState.Active,
               vevent.field[Entry]("DTSTAMP").map(e => ZonedDateTime.parse(e.value, gmtDateParser)).get.toInstant)
         }
-      case f: Parsed.Failure => throw new IllegalArgumentException(f.extra.traced.trace)
+      case f: Parsed.Failure => throw new IllegalArgumentException(f.extra.trace(true).msg)
     }
   }
 }

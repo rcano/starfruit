@@ -74,7 +74,6 @@ class RecurrencePane extends VBox { $ =>
       children -= children.last
       children += pane
     }
-    println("listener is fully there for fuck sake")
   }
   $ \ new TitledVBox("Recurrence Rule", spacing = 10) \ recurrenceRule
   

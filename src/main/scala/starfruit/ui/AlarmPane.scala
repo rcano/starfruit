@@ -15,6 +15,7 @@ import javafx.scene.text.Font
 import javafx.stage.FileChooser
 import javafx.stage.Popup
 import org.controlsfx.dialog.FontSelectorDialog
+import tangerine._
 
 import scala.collection.JavaConverters._
 
@@ -23,10 +24,10 @@ class AlarmPane extends VBox { $ =>
   val action = $ \ new BorderPane { $ =>
     setPadding(new Insets(20))
     setStyle("-fx-border-color: darkgray; -fx-border-width: 1px; -fx-border-radius: 4px")
-    $ top new Label("Action").modify(
-      BorderPane.setMargin(_, new Insets(0, 0, 10, 0)),
-      BorderPane.setAlignment(_, Pos.CENTER)
-    )
+    $ top new Label("Action").tap { l =>
+      BorderPane.setMargin(l, Margin(bot = 10))
+      BorderPane.setAlignment(l, Pos.CENTER)
+    }
 
     
     sealed trait AlarmType extends Pane

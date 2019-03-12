@@ -316,7 +316,7 @@ class MainApplication extends BaseApplication {
   checkerThread.scheduleAtFixedRate(() => {
       val now = wallClock.instant()
       alarms.synchronized {
-        var changesDetected = false
+        val toRunLater = collection.mutable.Buffer[Runnable]()
         val newStates = alarms.asScala.map { state =>
 //          println("checking " + state)
           val checkResult = AlarmStateMachine.checkAlarm(now, state)
@@ -324,86 +324,84 @@ class MainApplication extends BaseApplication {
           checkResult match {
             case AlarmStateMachine.KeepState => state
             case AlarmStateMachine.NotifyAlarm(next) =>
-              changesDetected = true
-              showAlarm(next)
+              toRunLater += (() => showAlarm(next))
               next
             case AlarmStateMachine.NotifyReminder(next) =>
-              changesDetected = true
-              Platform.runLater(() => Utils.newAlert(sceneRoot.getScene)("Reminder occurring in " + Duration.between(now, next.nextOccurrence),
+              toRunLater += (() => Utils.newAlert(sceneRoot.getScene)("Reminder occurring in " + Duration.between(now, next.nextOccurrence),
                                                                          next.alarm.message.get().fold(_.toString, identity), next.alarm.foregroundColor,
                                                                          next.alarm.backgroundColor, next.alarm.font, ButtonType.OK).show())
               next
             case AlarmStateMachine.AutoCloseAlarmNotification(next) =>
-              changesDetected = true
-              Platform.runLater(() => showingAlarms.remove(next.alarm) foreach (_.close()))
+              toRunLater += (() => showingAlarms.remove(next.alarm) foreach (_.close()))
               AlarmStateMachine.advanceAlarm(next.copy(state = AlarmState.Active))
           }
         }.filter(_.state != AlarmState.Ended)
-        if (changesDetected) {
+        if (toRunLater.nonEmpty) {
+          //must ensure we update the alarms first, before triggering the dialogs, otherwise they may overlap if the javafx runtime takes 
+          //too long to display the dialog and this recurrent check happens again
           Platform.runLater { () =>
-            val idx = sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex
+            val idx = sceneRoot.alarmsTable.getSelectionModel.getSelectedIndex 
             alarms.setAll(newStates:_*)
             sceneRoot.alarmsTable.getSelectionModel.select(idx)
           }
+          toRunLater foreach Platform.runLater
         }
       }
     }, 0, 5, scala.concurrent.duration.SECONDS)
   
   def showAlarm(state: AlarmState): Unit = {
-    Platform.runLater { () =>
-      val now = wallClock.instant()
-      val message = state.alarm.message.get()
-      val editButton = new ButtonType("🗔 edit")
-      val deferButton = new ButtonType("⏰ defer")
-      val alert = Utils.newAlert(sceneRoot.getScene)(Utils.instantToUserString(state.nextOccurrence), message.fold(_.toString, identity), state.alarm.foregroundColor,
-                                                     state.alarm.backgroundColor, state.alarm.font, editButton, deferButton, ButtonType.OK)
-      showingAlarms(state.alarm) = alert
-      alert.showAndWait().ifPresent { btn =>
-        showingAlarms.remove(state.alarm)
-        btn match {
-          case `deferButton` =>
-            val newAtTime = new DeferToDialog().modify(_.getDialogPane.getScene.getStylesheets.addAll(sceneRoot.getScene.getStylesheets)).showAndWait()
-            if (newAtTime.isPresent) {
-              val next = newAtTime.get match {
-                case Alarm.AtTime(localDate, localTime) => 
-                  state.copy(nextOccurrence = ZonedDateTime.of(localDate, localTime.getOrElse(LocalTime.MIDNIGHT), ZoneId.systemDefault).toInstant, state = AlarmState.Active)
-                case Alarm.TimeFromNow(hours, minutes) =>
-                  state.copy(nextOccurrence = state.nextOccurrence.plus(hours, ChronoUnit.HOURS).plus(minutes, ChronoUnit.MINUTES), state = AlarmState.Active)
-              }
-              println("Deferring alarm to " + next)
-              alarms.set(alarms.indexOf(state), next)
+    val now = wallClock.instant()
+    val message = state.alarm.message.get()
+    val editButton = new ButtonType("🗔 edit")
+    val deferButton = new ButtonType("⏰ defer")
+    val alert = Utils.newAlert(sceneRoot.getScene)(Utils.instantToUserString(state.nextOccurrence), message.fold(_.toString, identity), state.alarm.foregroundColor,
+                                                   state.alarm.backgroundColor, state.alarm.font, editButton, deferButton, ButtonType.OK)
+    showingAlarms(state.alarm) = alert
+    alert.showAndWait().ifPresent { btn =>
+      showingAlarms.remove(state.alarm)
+      btn match {
+        case `deferButton` =>
+          val newAtTime = new DeferToDialog().modify(_.getDialogPane.getScene.getStylesheets.addAll(sceneRoot.getScene.getStylesheets)).showAndWait()
+          if (newAtTime.isPresent) {
+            val next = newAtTime.get match {
+              case Alarm.AtTime(localDate, localTime) => 
+                state.copy(nextOccurrence = ZonedDateTime.of(localDate, localTime.getOrElse(LocalTime.MIDNIGHT), ZoneId.systemDefault).toInstant, state = AlarmState.Active)
+              case Alarm.TimeFromNow(hours, minutes) =>
+                state.copy(nextOccurrence = state.nextOccurrence.plus(hours, ChronoUnit.HOURS).plus(minutes, ChronoUnit.MINUTES), state = AlarmState.Active)
+            }
+            println("Deferring alarm to " + next)
+            alarms.set(alarms.indexOf(state), next)
             
-            } else {
-              showAlarm(state) //trigger again showing this alarm
-            }
+          } else {
+            showAlarm(state) //trigger again showing this alarm
+          }
           
-          case `editButton` =>
-            val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(state.alarm))
-            var resAlarm: Option[Alarm] = None
-            dialog.okButton.setOnAction { _ =>
-              resAlarm = Some(dialog.getAlarm)
-              dialog.close()
-            }
-            dialog.showAndWait()
-            resAlarm.fold {
-              showAlarm(state) //trigger again showing this alarm
-            } { n =>
-              `do`(EditAlarm(state, n))
-            }
+        case `editButton` =>
+          val dialog = new AlarmDialog(sceneRoot.getScene.getWindow, Some(state.alarm))
+          var resAlarm: Option[Alarm] = None
+          dialog.okButton.setOnAction { _ =>
+            resAlarm = Some(dialog.getAlarm)
+            dialog.close()
+          }
+          dialog.showAndWait()
+          resAlarm.fold {
+            showAlarm(state) //trigger again showing this alarm
+          } { n =>
+            `do`(EditAlarm(state, n))
+          }
           
-          case ButtonType.OK =>
-            //must run this later, to ensure the alarms where properly updated
-            Platform.runLater { () =>
-              val futureInstances = Iterator.iterate(AlarmStateMachine.advanceAlarm(state.copy(state = AlarmState.Active)))(
-                AlarmStateMachine.advanceAlarm).filter(s => s.nextOccurrence.isAfter(now) || s.state == AlarmState.Ended)
-              val next = futureInstances.next()
-              println("Advancing alarm to " + next)
-              if (next.state == AlarmState.Ended) {
-                alarms.remove(state)
-                buryInGraveyard(state).failed.foreach(e => new ExceptionDialog(new Exception("Failed writing alarm to the graveyard file. Drive issues?", e)).showAndWait())
-              } else alarms.set(alarms.indexOf(state), next)
-            }
-        }
+        case ButtonType.OK =>
+          //must run this later, to ensure the alarms where properly updated
+          Platform.runLater { () =>
+            val futureInstances = Iterator.iterate(AlarmStateMachine.advanceAlarm(state.copy(state = AlarmState.Active)))(
+              AlarmStateMachine.advanceAlarm).filter(s => s.nextOccurrence.isAfter(now) || s.state == AlarmState.Ended)
+            val next = futureInstances.next()
+            println("Advancing alarm to " + next)
+            if (next.state == AlarmState.Ended) {
+              alarms.remove(state)
+              buryInGraveyard(state).failed.foreach(e => new ExceptionDialog(new Exception("Failed writing alarm to the graveyard file. Drive issues?", e)).showAndWait())
+            } else alarms.set(alarms.indexOf(state), next)
+          }
       }
     }
   }

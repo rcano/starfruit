@@ -1,6 +1,6 @@
 package starfruit.util
 
-import language.{higherKinds, implicitConversions}
+import language.{higherKinds}
 import scala.annotation.tailrec
 import scala.collection.generic.CanBuildFrom
 
