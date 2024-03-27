@@ -407,6 +407,9 @@ class MainApplication extends BaseApplication {
   def showAlarm(state: AlarmState): Unit = {
     val now = wallClock.instant()
     val message = state.alarm.message.get()
+
+    if (message.toOption.exists(_.isBlank()) && state.alarm.message.isInstanceOf[Alarm.ScriptOutputMessage]) return
+
     val editButton = new ButtonType("edit")
     val deferButton = new ButtonType("defer")
     val alert = Utils.newAlert(sceneRoot.getScene)(

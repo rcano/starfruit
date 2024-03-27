@@ -78,6 +78,7 @@ javaOptions ++= {
     "--module-path=" + modules.map(_._1.data.getAbsolutePath).mkString(java.io.File.pathSeparator),
     "--add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED",
     "--add-opens=javafx.base/javafx.collections=ALL-UNNAMED",
+    "--add-opens=org.controlsfx.controls/org.controlsfx.dialog=ALL-UNNAMED",
     "--add-exports=javafx.base/com.sun.javafx.runtime=controlsfx",
   )
 }

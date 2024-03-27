@@ -38,7 +38,7 @@ class AlarmPane extends VBox { $ =>
     
     object fileContentsMode extends HBox with AlarmType { $ =>
       val path = $ \ new TextField().modify(HBox.setHgrow(_, Priority.ALWAYS))
-      val browseButton = $ \ new Button("browse").modify(_.prefHeightProperty.bind(path.heightProperty))
+      val browseButton = $ \ new Button("🗁").modify(_.prefHeightProperty.bind(path.heightProperty))
       
       browseButton.setOnAction { _ =>
         val chooser = new FileChooser().modify(_.setTitle("Select file"))
@@ -72,8 +72,8 @@ class AlarmPane extends VBox { $ =>
       setSpacing(10)
       setFillWidth(true)
       val path = new TextField
-      val testButton = new Button("test")
-      val browseButton = new Button("browse")
+      val testButton = new Button("▶")
+      val browseButton = new Button("🗁")
       Seq(testButton, browseButton).foreach(_.prefWidthProperty.bind(path.heightProperty))
       $ \ hbox(testButton, path.modify(HBox.setHgrow(_, Priority.ALWAYS)), browseButton)
       
@@ -204,6 +204,7 @@ class AlarmPane extends VBox { $ =>
       $ `right` vbox(fontAndColor, specialActions)(spacing = 10, fillWidth = true)
     }
   }
+  $ \ action
   VBox.setVgrow(action, Priority.ALWAYS)
   
   val time = $ \ new TitledVBox("Time", 10) with Selectable { $ =>
