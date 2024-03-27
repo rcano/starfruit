@@ -30,22 +30,22 @@ class HourPicker(initial: LocalTime = LocalTime.MIDNIGHT, unboundHours: Boolean 
 }
 
 class DurationPicker(val modes: DurationPicker.Type*) extends BorderPane { $ =>
-  val mode = $ right combobox(modes:_*)
+  val mode = $ `right` combobox(modes*)
   val valueSpinner = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(7) }
   val hourPicker = new HourPicker()
   
   mode.getSelectionModel.selectedItemProperty.addListener((_, _, prop) => prop match {
-      case DurationPicker.HoursMinutes => $ left hourPicker
-      case _ => $ left valueSpinner
+      case DurationPicker.HoursMinutes => $ `left` hourPicker
+      case _ => $ `left` valueSpinner
     })
   mode.getSelectionModel.selectLast()
   mode.getSelectionModel.selectFirst()
   
   def getDuration: Duration = mode.getSelectionModel.getSelectedItem match {
-    case DurationPicker.Minutes => Duration ofMinutes valueSpinner.getValue
+    case DurationPicker.Minutes => Duration `ofMinutes` valueSpinner.getValue
     case DurationPicker.HoursMinutes => Duration.ofMinutes(hourPicker.minutes.getValue + hourPicker.hours.getValue * 60)
-    case DurationPicker.Days => Duration ofDays valueSpinner.getValue
-    case DurationPicker.Weeks => Duration ofDays valueSpinner.getValue * 7
+    case DurationPicker.Days => Duration `ofDays` valueSpinner.getValue
+    case DurationPicker.Weeks => Duration `ofDays` valueSpinner.getValue * 7
   }
   def setDuration(d: Duration): Unit = {
     d.toDays match {

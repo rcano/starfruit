@@ -13,38 +13,38 @@ import javafx.scene.control._
 import javafx.scene.layout._
 import javafx.scene.paint.Color
 import javafx.stage.Popup
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 class RecurrencePane extends VBox { $ =>
   setFillWidth(true)
   setSpacing(15)
-  val recurrenceRule = new HBox { $ =>
+  object recurrenceRule extends HBox { $ =>
     setFillHeight(true)
     setSpacing(20)
     VBox.setVgrow(this, Priority.ALWAYS)
     val selectedRecurrence = new SimpleObjectProperty[RecurrenceSubPane](NoRecurrence)
     private val recurrenceToggleGroup = new ToggleGroup()
-    val noRecurrence = recurrenceToggleGroup \ new RadioButton("No Recurrence") { setOnAction(_ => selectedRecurrence set NoRecurrence) }
+    val noRecurrence = recurrenceToggleGroup \ new RadioButton("No Recurrence") { setOnAction(_ => selectedRecurrence `set` NoRecurrence) }
 //    val atLogin = recurrenceToggleGroup \ new RadioButton("At Login") { setOnAction(_ => selectedRecurrence set AtLoginRecurrence) }
-    val hourlyMinutely = recurrenceToggleGroup \ new RadioButton("Hourly/Minutely") {
+    val hourlyMinutely = recurrenceToggleGroup \ new RadioButton("Hourly/Minutely") with Selectable {
       val pane = new HourlyMinutelyRecurrence
-      setOnAction(_ => selectedRecurrence set pane)
+      setOnAction(_ => selectedRecurrence `set` pane)
     }
-    val daily = recurrenceToggleGroup \ new RadioButton("Daily") {
+    val daily = recurrenceToggleGroup \ new RadioButton("Daily") with Selectable {
       val pane = new DailyRecurrence
-      setOnAction(_ => selectedRecurrence set pane)
+      setOnAction(_ => selectedRecurrence `set` pane)
     }
-    val weekly = recurrenceToggleGroup \ new RadioButton("Weekly") {
+    val weekly = recurrenceToggleGroup \ new RadioButton("Weekly") with Selectable {
       val pane = new WeeklyRecurrence
-      setOnAction(_ => selectedRecurrence set pane)
+      setOnAction(_ => selectedRecurrence `set` pane)
     }
-    val monthly = recurrenceToggleGroup \ new RadioButton("Monthly") {
+    val monthly = recurrenceToggleGroup \ new RadioButton("Monthly") with Selectable {
       val pane = new MonthlyRecurrence
-      setOnAction(_ => selectedRecurrence set pane)
+      setOnAction(_ => selectedRecurrence `set` pane)
     }
-    val yearly = recurrenceToggleGroup \ new RadioButton("Yearly") {
+    val yearly = recurrenceToggleGroup \ new RadioButton("Yearly") with Selectable {
       val pane = new YearlyRecurrence
-      setOnAction(_ => selectedRecurrence set pane)
+      setOnAction(_ => selectedRecurrence `set` pane)
     }
     noRecurrence.setSelected(true)
     
@@ -77,7 +77,7 @@ class RecurrencePane extends VBox { $ =>
   }
   $ \ new TitledVBox("Recurrence Rule", spacing = 10) \ recurrenceRule
   
-  val recurrenceEnd = new GridPane { $ =>
+  object recurrenceEnd extends GridPane { $ =>
     setSpacing(10)
     setHgap(10)
     setVgap(10)
@@ -96,31 +96,31 @@ class RecurrencePane extends VBox { $ =>
       add(nodes.head, 0, row)
       nodes.drop(1) match {
         case Seq() =>
-        case elems => add(hbox(elems:_*)(10, Pos.BASELINE_LEFT), 1, row)
+        case elems => add(hbox(elems*)(10, Pos.BASELINE_LEFT), 1, row)
       }
     }
     addRow(0, noEnd)
     addRow(1, endAfter, endAfterOccurrences, new Label("occurrence(s)"))
     addRow(2, endBy, endByDate, endByHourPicker/* , endByAnyTime */)
     
-    endAfterOccurrences.getParent.disableProperty bind endAfter.selectedProperty.not
-    endByDate.getParent.disableProperty bind endBy.selectedProperty.not
+    endAfterOccurrences.getParent.disableProperty `bind` endAfter.selectedProperty.not
+    endByDate.getParent.disableProperty `bind` endBy.selectedProperty.not
   }
   
   $ \ new TitledVBox("Recurrence End", spacing = 10) \ recurrenceEnd
   
-  val exceptions = new BorderPane { $ =>
+  object exceptions extends BorderPane { $ =>
     setStyle("-fx-border-color: darkgray; -fx-border-width: 1px; -fx-border-radius: 4px")
 //    $ top new Label("Exceptions") {
 //      BorderPane.setMargin(this, new Insets(10,10, 0, 10))
 //      BorderPane.setAlignment(this, Pos.CENTER)
 //    }
     
-    val exceptionsList = $ center new ListView[LocalDate] {
+    val exceptionsList = $ `center` new ListView[LocalDate] with Selectable {
       BorderPane.setMargin(this, new Insets(10, 5, 10, 10))
       val dateTimeFormatter = DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.FULL)
       setCellFactory(list => new ListCell[LocalDate]() {
-          override def updateItem(item: LocalDate, empty) = {
+          override def updateItem(item: LocalDate, empty: Boolean) = {
             super.updateItem(item, empty)
             if (item != null) setText(item.format(dateTimeFormatter))
             else setText("")
@@ -135,7 +135,7 @@ class RecurrencePane extends VBox { $ =>
     val excludeHolidays = new CheckBox("Exclude holidays").modify(_.setVisible(false)) //unsupported
     val onlyDuringWorktime = new CheckBox("Only during worktime")
     
-    private val leftBox = $ right new VBox { $ =>
+    private val leftBox = $ `right` new VBox { $ =>
       BorderPane.setMargin(this, new Insets(10, 10, 10, 5))
       setSpacing(15)
       $ \ exceptionDate
@@ -145,9 +145,9 @@ class RecurrencePane extends VBox { $ =>
     }
     exceptionsList.prefWidthProperty.bind(leftBox.widthProperty)
     
-    addButton.disableProperty bind exceptionDate.valueProperty.isNull
-    deleteButton.disableProperty bind exceptionsList.getSelectionModel.selectedItemProperty.isNull
-    changeButton.disableProperty bind new BooleanBinding {
+    addButton.disableProperty `bind` exceptionDate.valueProperty.isNull
+    deleteButton.disableProperty `bind` exceptionsList.getSelectionModel.selectedItemProperty.isNull
+    changeButton.disableProperty `bind` new BooleanBinding {
       bind(exceptionsList.getSelectionModel.selectedItemProperty, exceptionDate.valueProperty)
       override def computeValue() = {
         (exceptionsList.getSelectionModel.getSelectedItem, exceptionDate.getValue) match {
@@ -158,7 +158,7 @@ class RecurrencePane extends VBox { $ =>
     }
     addButton.setOnAction { _ =>
       if (!exceptionsList.getItems.contains(exceptionDate.getValue))
-        exceptionsList.getItems add exceptionDate.getValue
+        exceptionsList.getItems `add` exceptionDate.getValue
       exceptionDate.setValue(null)
     }
     deleteButton.setOnAction { _ =>
@@ -177,10 +177,10 @@ class RecurrencePane extends VBox { $ =>
     case NoRecurrence => true
     case _ => false
   }
-  recurrenceEnd.disableProperty bind isNoRecurrence
-  recurrenceRule.subRepetition.disableProperty bind isNoRecurrence
+  recurrenceEnd.disableProperty `bind` isNoRecurrence
+  recurrenceRule.subRepetition.disableProperty `bind` isNoRecurrence
   
-  exceptions.disableProperty bind recurrenceRule.selectedRecurrence.map { 
+  exceptions.disableProperty `bind` recurrenceRule.selectedRecurrence.map { 
     case NoRecurrence | AtLoginRecurrence => true
     case _ => false
   }
@@ -189,7 +189,7 @@ class RecurrencePane extends VBox { $ =>
     case _: HourlyMinutelyRecurrence => false
     case _ => true
   }
-  recurrenceEnd.endByHourPicker.disableProperty bind disableEndByHourMinute
+  recurrenceEnd.endByHourPicker.disableProperty `bind` disableEndByHourMinute
 }
 
 sealed trait RecurrenceSubPane extends Node
@@ -218,24 +218,24 @@ trait DaysSelection {
 }
 class DailyRecurrence extends BorderPane with RecurrenceSubPane with DaysSelection { $ =>
   val days = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(4) }
-  $ top new HBox(new Label("Recur every"), days, new Label("day(s)")) { setSpacing(15); setAlignment(Pos.BASELINE_LEFT) }
+  $ `top` new HBox(new Label("Recur every"), days, new Label("day(s)")) { setSpacing(15); setAlignment(Pos.BASELINE_LEFT) }
   
-  $ center selectedDays
+  $ `center` selectedDays
 }
 class WeeklyRecurrence extends BorderPane with RecurrenceSubPane with DaysSelection { $ =>
   val weeks = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(4) }
-  $ top hbox(new Label("Recur every"), weeks, new Label("week(s)"))(spacing = 15, alignment = Pos.BASELINE_LEFT)
+  $ `top` hbox(new Label("Recur every"), weeks, new Label("week(s)"))(spacing = 15, alignment = Pos.BASELINE_LEFT)
   
-  $ center selectedDays
+  $ `center` selectedDays
   
   import selectedDays._
   val today = java.time.LocalDate.now()
-  Seq(monday, tuesday, wednesday, thursday, friday, saturday, sunday) filterNot (d => today.getDayOfWeek.toString equalsIgnoreCase d.getText) foreach (_.setSelected(false))
+  Seq(monday, tuesday, wednesday, thursday, friday, saturday, sunday) filterNot (d => today.getDayOfWeek.toString `equalsIgnoreCase` d.getText) foreach (_.setSelected(false))
 }
 trait MonthSelection {
   val mode = new ToggleGroup()
   val onDayMode = mode \ new RadioButton("On day")
-  val onDay = combobox((1 to 31).map(_.toString) :+ "Last" :_*)
+  val onDay = combobox((1 to 31).map(_.toString) :+ "Last"*)
   val onTheDayMode = mode \ new RadioButton("On the")
   val onTheDayNumber = combobox("1st", "2nd", "3rd", "4th", "5th", "Last", "2nd Last", "3rd Last", "4th Last", "5th Last")
   val onTheDayDay = combobox("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
@@ -250,21 +250,21 @@ trait MonthSelection {
     $(2, 1) = onTheDayDay
   }
   
-  onDay.disableProperty bind onDayMode.selectedProperty.not
+  onDay.disableProperty `bind` onDayMode.selectedProperty.not
   val isNotOnTheDayMode = onTheDayMode.selectedProperty.not
-  onTheDayNumber.disableProperty bind isNotOnTheDayMode
-  onTheDayDay.disableProperty bind isNotOnTheDayMode
+  onTheDayNumber.disableProperty `bind` isNotOnTheDayMode
+  onTheDayDay.disableProperty `bind` isNotOnTheDayMode
 }
 class MonthlyRecurrence extends BorderPane with RecurrenceSubPane with MonthSelection { $ =>
   val months = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(4) }
-  $ top hbox(new Label("Recur every"), months, new Label("month(s)"))(spacing = 15, alignment = Pos.BASELINE_LEFT)
+  $ `top` hbox(new Label("Recur every"), months, new Label("month(s)"))(spacing = 15, alignment = Pos.BASELINE_LEFT)
   
-  $ center monthsPane
+  $ `center` monthsPane
 }
 class YearlyRecurrence extends VBox with RecurrenceSubPane with MonthSelection { $ =>
   setSpacing(15)
   val years = new Spinner[Int](1, Int.MaxValue, 1, 1) { getEditor.setPrefColumnCount(4) }
-  def mkrow(nodes: Node*) = $ \ hbox(nodes:_*)(spacing = 15, alignment = Pos.BASELINE_LEFT)
+  def mkrow(nodes: Node*) = $ \ hbox(nodes*)(spacing = 15, alignment = Pos.BASELINE_LEFT)
   mkrow(new Label("Recur every"), years, new Label("year(s)"))
   
   $ \ monthsPane
@@ -274,7 +274,7 @@ class YearlyRecurrence extends VBox with RecurrenceSubPane with MonthSelection {
     case (cb, idx) => 
       val month = java.time.Month.of(idx + 1)
       month.maxLength
-      cb.disableProperty bind new BooleanBinding {
+      cb.disableProperty `bind` new BooleanBinding {
         bind(onDayMode.selectedProperty, onDay.getSelectionModel.selectedIndexProperty)
         override def computeValue = !(onDayMode.isSelected && onDay.getSelectionModel.getSelectedIndex < month.maxLength)
       }
@@ -290,9 +290,9 @@ class YearlyRecurrence extends VBox with RecurrenceSubPane with MonthSelection {
   val onFeb29 = combobox("None", "1 Mar", "28 Feb")
   mkrow(new Label("February 29th alarm in non-leap years:"), onFeb29)
   
-  onFeb29.getParent.disableProperty bind new ObjectBinding[java.lang.Boolean] {
+  onFeb29.getParent.disableProperty `bind` new ObjectBinding[java.lang.Boolean] {
     bind(onDayMode.selectedProperty, onDay.valueProperty, months(1).selectedProperty)
-    override def computeValue = !(onDayMode.isSelected && onDay.getValue == "29" && months(1).isSelected)
+    override def computeValue() = !(onDayMode.isSelected && onDay.getValue == "29" && months(1).isSelected)
   }
 }
 
@@ -300,7 +300,7 @@ class SubRecurrenceDialog extends BorderPane { $ =>
   setPadding(new Insets(10))
   val repeatEnabled = new CheckBox("Repeat every")
   val repeatEvery = new DurationPicker(DurationPicker.Minutes, DurationPicker.HoursMinutes, DurationPicker.Days)
-  $ top hbox(repeatEnabled, repeatEvery)(spacing = 10)
+  $ `top` hbox(repeatEnabled, repeatEvery)(spacing = 10)
   
   val mode = new ToggleGroup()
   val repetitionsMode = mode \ new RadioButton("Number of repetitions:")
@@ -308,7 +308,7 @@ class SubRecurrenceDialog extends BorderPane { $ =>
   val durationMode = mode \ new RadioButton("Duration")
   val duration = new DurationPicker(DurationPicker.Minutes, DurationPicker.HoursMinutes, DurationPicker.Days)
   
-  $ center new VBox { $ =>
+  $ `center` new VBox { $ =>
     BorderPane.setMargin(this, new Insets(10, 0, 0, 0))
     setSpacing(30)
     setStyle("-fx-border-color: darkgray; -fx-border-width: 1px; -fx-border-radius: 4px")

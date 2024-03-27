@@ -13,10 +13,8 @@ package object ui {
   /*****************************************
    * builder api
    *****************************************/
-  
-  implicit class PaneBuilder(val peer: Pane) extends AnyVal {
-    def \[N <: Node](node: N): node.type = { peer.getChildren.add(node); node }
-  }
+
+  extension (peer: Pane) inline def \[N <: Node](n: Node): n.type = { peer.getChildren.add(n); n }
   implicit class BorderPaneBuilder(val peer: BorderPane) extends AnyVal {
     def top[N <: Node](node: N): N = { peer.setTop(node); node }
     def center[N <: Node](node: N): N = { peer.setCenter(node); node }
@@ -46,14 +44,14 @@ package object ui {
    **********************************/
   
   def hbox(nodes: Node*)(implicit spacing: Double = 10, alignment: Pos = Pos.BASELINE_LEFT, fillHeight: Boolean = false) = {
-    val res = new HBox(nodes:_*)
+    val res = new HBox(nodes*)
     res.setSpacing(spacing)
     res.setAlignment(alignment)
     res.setFillHeight(fillHeight)
     res
   }
   def vbox(nodes: Node*)(implicit spacing: Double = 10, alignment: Pos = Pos.BASELINE_LEFT, fillWidth: Boolean = false) = {
-    val res = new VBox(nodes:_*)
+    val res = new VBox(nodes*)
     res.setSpacing(spacing)
     res.setAlignment(alignment)
     res.setFillWidth(fillWidth)
@@ -64,12 +62,12 @@ package object ui {
     setVgap(vgap)
     setHgap(hgap)
     for ((row, idx) <- rows.zipWithIndex)
-      addRow(idx, row:_*)
+      addRow(idx, row*)
   }
   
   def combobox[T](elems: T*) = {
     val res = new ComboBox[T]
-    res.getItems.addAll(elems:_*)
+    res.getItems.addAll(elems*)
     res.getSelectionModel.selectFirst()
     res
   }

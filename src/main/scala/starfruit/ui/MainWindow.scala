@@ -14,8 +14,8 @@ import javafx.util.StringConverter
 import org.controlsfx.control.HiddenSidesPane
 
 class MainWindow extends BorderPane { $ =>
-  val menuBar = new MenuBar { $ =>
-    val fileMenu = $ \ new Menu("_File") { $ =>
+  val menuBar = new MenuBar with Selectable { $ =>
+    val fileMenu = $ \ new Menu("_File") with Selectable { $ =>
       val importAlarms = $ \ new MenuItem("Import Alarms...")
 //      val exportSelectedAlarms = $ \ new MenuItem("Export Selected Alarms...")
       $ \ new SeparatorMenuItem
@@ -31,11 +31,11 @@ class MainWindow extends BorderPane { $ =>
 //      val findPrevious = $ \ new MenuItem("Find Previous")
 //    }
   }
-  val toolBar = new ToolBar { $ =>
-    val newButton = $ \ new Button("🗌 New") {
-      val displayAlarm = new MenuItem("🗌 New Display Alarm")
-      val commandAlarm = new MenuItem("💻 New Command Alarm")
-      val audioAlarm = new MenuItem("🎜 New Audio Alarm")
+  val toolBar = new ToolBar with Selectable { $ =>
+    val newButton = $ \ new Button("New") with Selectable {
+      val displayAlarm = new MenuItem("New Display Alarm")
+      val commandAlarm = new MenuItem("New Command Alarm")
+      val audioAlarm = new MenuItem("New Audio Alarm")
       
       setOnAction { evt =>
         val menu = new ContextMenu(displayAlarm, commandAlarm, audioAlarm)
@@ -43,14 +43,14 @@ class MainWindow extends BorderPane { $ =>
       }
     }
     $ \ new Separator(VERTICAL)
-    val copyButton = $ \ new Button("🗐 Copy")
-    val editButton = $ \ new Button("🗔 Edit")
-    val deleteButton = $ \ new Button("🗑 Delete")
+    val copyButton = $ \ new Button("Copy")
+    val editButton = $ \ new Button("Edit")
+    val deleteButton = $ \ new Button("Delete")
     $ \ new Separator(VERTICAL)
-    val undoButton = $ \ new Button("⎌ Undo")
-    val redoButton = $ \ new Button("⎌ Redo")
+    val undoButton = $ \ new Button("Undo")
+    val redoButton = $ \ new Button("Redo")
     $ \ new Separator(VERTICAL)
-    val findButton = $ \ new Button("🔍 Find").modify(_.setOnAction { _ =>
+    val findButton = $ \ new Button("Find").modify(_.setOnAction { _ =>
         hiddenPanel.setPinnedSide(Side.BOTTOM)
         val timeline = new Timeline()
         timeline.getKeyFrames.add(new KeyFrame(javafx.util.Duration.millis(100), _ => findTextField.requestFocus()))
@@ -58,20 +58,20 @@ class MainWindow extends BorderPane { $ =>
       })
     
   }
-  $ top new VBox(menuBar, toolBar)
+  $ `top` new VBox(menuBar, toolBar)
 
-  val hiddenPanel = $ center new HiddenSidesPane().modify(_.setTriggerDistance(0), _.setAnimationDelay(javafx.util.Duration.ZERO),
+  val hiddenPanel = $ `center` new HiddenSidesPane().modify(_.setTriggerDistance(0), _.setAnimationDelay(javafx.util.Duration.ZERO),
                                                           _.setAnimationDuration(javafx.util.Duration.seconds(0.2)))
   
   type TableColumns = (LocalDateTime, String, Color, String, String)
-  val alarmsTable = new TableView[TableColumns] {
-    val timeCol = new TableColumn[TableColumns, LocalDateTime]("Time") {
+  val alarmsTable = new TableView[TableColumns] with Selectable {
+    val timeCol = new TableColumn[TableColumns, LocalDateTime]("Time") with Selectable {
       setCellValueFactory { cellDataFeatures => new ReadOnlyObjectWrapper(cellDataFeatures.getValue._1) }
       val formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
       setCellFactory { col => 
         val res = new cell.TextFieldTableCell[TableColumns, LocalDateTime]
         res.setConverter(new StringConverter[LocalDateTime] {
-            override def fromString(s) = ???
+            override def fromString(s: String) = ???
             override def toString(t: LocalDateTime) = t.format(formatter)
           })
         res
@@ -86,7 +86,7 @@ class MainWindow extends BorderPane { $ =>
       setCellValueFactory { cellDataFeatures => new ReadOnlyObjectWrapper(cellDataFeatures.getValue._3) }
       setCellFactory { col =>
         new TableCell[TableColumns, Color] {
-          override def updateItem(item: Color, isEmpty) = {
+          override def updateItem(item: Color, isEmpty: Boolean) = {
             super.updateItem(item, isEmpty)
             if (item == null) {
               setStyle(null)
@@ -113,8 +113,8 @@ class MainWindow extends BorderPane { $ =>
   hiddenPanel.setContent(alarmsTable)
   
   val findTextField = new TextField()
-  val findNext = new Button("⎘ Next")
-  val findPrevious = new Button("⎗ Previous")
+  val findNext = new Button("Next")
+  val findPrevious = new Button("Previous")
   val cancelFind = new Button("🗙").modify(_.setStyle("-fx-text-fill: red"), _.setOnAction(_ => hiddenPanel.setPinnedSide(null)))
   val findPane = hbox(new Label("Find:"), findTextField, findNext, findPrevious, cancelFind).modify(
     _.setStyle("-fx-background-color: -fx-background"),

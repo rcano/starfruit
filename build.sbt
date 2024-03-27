@@ -1,11 +1,10 @@
 name := "starfruit"
-version := "1.1"
-scalaVersion := "2.12.8"
-scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-Yinfer-argument-types", "-Yno-adapted-args", "-Xlint", "-Ypartial-unification",
-   "-opt:l:method,inline", "-opt-inline-from:scala.**,starfruit.**,tangerine.**", "-opt-warnings:_", "-Ywarn-dead-code", "-Ywarn-extra-implicit", "-Ywarn-inaccessible", "-Ywarn-infer-any", "-Ywarn-nullary-override", "-Ywarn-nullary-unit", "-Ywarn-numeric-widen", "-Ywarn-unused:_", "-Ywarn-value-discard")
+version := "1.5"
+scalaVersion := "3.4.0"
+scalacOptions ++= Seq("-deprecation", "-unchecked", "-Wunused:all", "-rewrite", "-source", "3.4-migration")
 fork := true
 
-lazy val jfxVersion = "11"
+lazy val jfxVersion = "21.0.2"
 lazy val jfxClassifier = settingKey[String]("jfxClassifier")
 jfxClassifier := {
   if (scala.util.Properties.isWin) "win"
@@ -16,28 +15,28 @@ jfxClassifier := {
 
 dependsOn(RootProject(file("../tangerine")))
 
-autoScalaLibrary := false
 libraryDependencies ++= Seq(
-  "org.scala-lang" % "scala-library" % scalaVersion.value % "provided",
   "org.openjfx" % "javafx-graphics" % jfxVersion % "provided" classifier jfxClassifier.value,
   "org.openjfx" % "javafx-controls" % jfxVersion % "provided" classifier jfxClassifier.value,
   "org.openjfx" % "javafx-base" % jfxVersion % "provided" classifier jfxClassifier.value,
   "org.openjfx" % "javafx-media" % jfxVersion % "provided" classifier jfxClassifier.value,
   "org.openjfx" % "javafx-swing" % jfxVersion % "provided" classifier jfxClassifier.value,
 
-  "com.github.pathikrit" %% "better-files" % "3.7.0",
-  "org.controlsfx" % "controlsfx" % "9.0.0",
-  "com.beachape" %% "enumeratum" % "1.5.13",
-  "com.github.benhutchison" %% "prickle" % "1.1.14",
-  "com.lihaoyi" %% "fastparse" % "2.1.0",
-  "org.scalatest" %% "scalatest" % "3.0.5" % "test",
-  "org.scalacheck" %% "scalacheck" % "1.14.0" % "test"
+  "com.lihaoyi" %% "sourcecode" % "0.3.1",
+  "com.lihaoyi" %% "pprint" % "0.8.1",
+  "com.github.pathikrit" %% "better-files" % "3.9.2",
+  "org.controlsfx" % "controlsfx" % "11.2.1",
+  "com.typesafe.play" %% "play-json" % "2.10.4",
+  "com.lihaoyi" %% "fastparse" % "3.0.2",
+  "org.scalatest" %% "scalatest" % "3.2.18" % "test",
+  "org.scalacheck" %% "scalacheck" % "1.17.0" % "test"
 )
 
-mainClass in reStart := Some("starfruit.ui.DevAppReloader")
-mainClass in assembly := Some("starfruit.ui.Main")
 
-assemblyShadeRules in assembly := Seq(
+reStart / mainClass := Some("starfruit.ui.DevAppReloader")
+assembly / mainClass := Some("starfruit.ui.Main")
+
+assembly / assemblyShadeRules := Seq(
   ShadeRule.keep("starfruit.**").inAll,
   ShadeRule.keep("scala.Predef$").inAll,
   ShadeRule.keep("better.files.File$").inAll,
@@ -62,7 +61,8 @@ assemblyShadeRules in assembly := Seq(
 lazy val moduleJars = taskKey[Seq[(Attributed[File], java.lang.module.ModuleDescriptor)]]("moduleJars")
 moduleJars := {
   val attributedJars = (Compile/dependencyClasspathAsJars).value//.filterNot(_.metadata.get(moduleID.key).exists(_.organization == "org.scala-lang"))
-  val modules = attributedJars.flatMap { aj =>
+  val moduleIdAttr = AttributeKey[ModuleID]("moduleID")
+  val modules = attributedJars.filterNot(_.metadata.get(moduleIdAttr).exists(_.name.matches("scala.?-library.*"))).flatMap { aj =>
     try {
       val module = java.lang.module.ModuleFinder.of(aj.data.toPath).findAll().iterator.next.descriptor
       Some(aj -> module)//.filter(!_._2.modifiers.contains(java.lang.module.ModuleDescriptor.Modifier.AUTOMATIC))
@@ -87,7 +87,7 @@ javacOptions := javaOptions.value
 
 
 enablePlugins(JavaAppPackaging)
-mappings in (Compile, packageDoc) := Seq()
+Compile / packageDoc / mappings := Seq()
 
 Universal/mappings := {
   val prev = (Universal/mappings).value
@@ -96,7 +96,7 @@ Universal/mappings := {
   (for { (file, module) <- modules } yield file.data -> s"libmods/${file.data.name}")
 }
 
-javaOptions in Universal ++= Seq(
+Universal / javaOptions ++= Seq(
   "-J-Xmx100m",
   "-J-Xss512k",
   "-J-XX:CICompilerCount=2",

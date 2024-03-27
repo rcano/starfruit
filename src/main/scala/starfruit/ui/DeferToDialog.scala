@@ -23,12 +23,12 @@ class DeferToDialog extends Dialog[Alarm.Time] {
   private val timeFromNow = mode \ new RadioButton("Time from now:")
   private val timeFromNowTime = new HourPicker(unboundHours = true)
     
-  Seq(atDate, atTime, atAnyTime) foreach (_.disableProperty bind atDateTime.selectedProperty.not)
-  atTime.disableProperty bind new BooleanBinding {
+  Seq(atDate, atTime, atAnyTime) foreach (_.disableProperty `bind` atDateTime.selectedProperty.not)
+  atTime.disableProperty `bind` new BooleanBinding {
     bind(atDateTime.selectedProperty, atAnyTime.selectedProperty)
     def computeValue = !atDateTime.isSelected || atAnyTime.isSelected
   }
-  timeFromNowTime.disableProperty bind timeFromNow.selectedProperty.not
+  timeFromNowTime.disableProperty `bind` timeFromNow.selectedProperty.not
     
   val timePane = gridPane(Seq(atDateTime, atDate, atTime, atAnyTime),
                           Seq(timeFromNow, timeFromNowTime))

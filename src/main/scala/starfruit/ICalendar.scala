@@ -13,17 +13,17 @@ object ICalendar {
   }
   case class Entry(name: String, valueType: Option[String], value: String) extends Element
   
-  def element[_: P]: P[Element] = P( section | entry )
-  def section[_: P] = P( "BEGIN:" ~ name.! flatMap (name => nl ~ element.rep ~ s"END:$name" ~ nl map (elems => Section(name, elems))) )
-  def entry[_: P] = P( !"END" ~ name.! ~ (";" ~ name ~ "=" ~ name).!.? ~ ":" ~ (P("\r\n ").map(p => ' ') | !nl ~ AnyChar).rep.! ~ nl ).map((Entry.apply _).tupled)
-  def name[_: P] = P( CharPred { case ';' | ':' | '=' | '\r' | '\n' => false; case _ => true }.rep(1) )
-  def nl[_: P] = P("\r\n" | "\n")
+  def element[$: P]: P[Element] = P( section | entry )
+  def section[$: P] = P( "BEGIN:" ~ name.! flatMap (name => nl ~ element.rep ~ s"END:$name" ~ nl map (elems => Section(name, elems))) )
+  def entry[$: P] = P( !"END" ~ name.! ~ (";" ~ name ~ "=" ~ name).!.? ~ ":" ~ (P("\r\n ").map(_ => ' ') | !nl ~ AnyChar).rep.! ~ nl ).map((Entry.apply).tupled)
+  def name[$: P] = P( CharPred { case ';' | ':' | '=' | '\r' | '\n' => false; case _ => true }.rep(1) )
+  def nl[$: P] = P("\r\n" | "\n")
   
   def parse(ical: String, defaultFont: String): Try[Seq[AlarmState]] = Try {
     val gmtDateParser = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssVV")
     val localDateParser = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
     
-    fastparse.parse(ical, section(_)) match {
+    fastparse.parse(ical, section(using _)) match {
       case Parsed.Success(vcalendar, idx) => 
         vcalendar.elements.collect {
           case vevent@ Section("VEVENT", elements) => 
@@ -31,7 +31,7 @@ object ICalendar {
             val (font, foreground, background) = valarm.field[Entry]("X-KDE-KALARM-FONTCOLOR").fold((defaultFont, "#ffffff", "#fff0f5")) { s =>
               s.value.split("\\\\;") match {
                 case Array(back, fore, font) =>
-                  val Array(fontName, size, _*) = font.split("\\\\,")
+                  val Array(fontName, size, _*) = font.split("\\\\,"): @unchecked
                   (s"normal $size $fontName", fore, back)
                 case Array(back, fore) => (defaultFont, fore, back)
               }
@@ -49,7 +49,7 @@ object ICalendar {
             val (recurrence, end) = vevent.field[Entry]("RRULE").map(_.value.split(";").map { entry =>
                 val Array(a, b) = entry.split("=")
                 (a, b)
-              }.toMap).fold[(Alarm.Recurrence, Option[Int Either LocalDateTime])](Alarm.NoRecurrence -> None) { props =>
+              }.toMap).fold[(Alarm.Recurrence, Option[Int `Either` LocalDateTime])](Alarm.NoRecurrence -> None) { props =>
               val end = props.get("COUNT").map(i => Left(i.toInt)).orElse(
                 props.get("UNTIL").map(date => Right(LocalDateTime.parse(date, gmtDateParser))))
               
@@ -64,13 +64,13 @@ object ICalendar {
                   case "DAILY" =>
                     val every = props.get("INTERVAL").map(_.toInt).getOrElse(1)
                     val days = EnumSet.noneOf(classOf[DayOfWeek])
-                    props.get("BYDAY").fold[Unit](days addAll EnumSet.allOf(classOf[DayOfWeek]))(_.split(",").map(day) foreach days.add)
+                    props.get("BYDAY").fold[Unit](days `addAll` EnumSet.allOf(classOf[DayOfWeek]))(_.split(",").map(day) foreach days.add)
                     Alarm.DailyRecurrence(every, days)
                   
                   case "WEEKLY" =>
                     val weeks = props.get("INTERVAL").map(_.toInt).getOrElse(1)
                     val days = EnumSet.noneOf(classOf[DayOfWeek])
-                    props.get("BYDAY").fold[Unit](days addAll EnumSet.allOf(classOf[DayOfWeek]))(_.split(",").map(day) foreach days.add)
+                    props.get("BYDAY").fold[Unit](days `addAll` EnumSet.allOf(classOf[DayOfWeek]))(_.split(",").map(day) foreach days.add)
                     Alarm.WeeklyRecurrence(weeks, days)
                   
                   case "MONTHLY" =>
@@ -84,7 +84,7 @@ object ICalendar {
                     val dom = props.get("BYDAY").map(byday => Alarm.NthWeekDayOfMonth(byday.dropRight(2).toInt, day(byday.takeRight(2)))).getOrElse(
                       Alarm.NthDayOfMonth(props("BYMONTHDAY").toInt))
                     val months = EnumSet.noneOf(classOf[Month])
-                    props.get("BYMONTH") foreach (_.split(",").map(_.toInt) foreach (i => months add Month.of(i)))
+                    props.get("BYMONTH") foreach (_.split(",").map(_.toInt) foreach (i => months `add` Month.of(i)))
                     Alarm.YearlyRecurrence(every, dom, months, None)
                 }) -> end
             }

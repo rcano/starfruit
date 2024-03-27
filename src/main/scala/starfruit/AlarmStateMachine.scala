@@ -4,8 +4,7 @@ import language.implicitConversions
 
 import java.time._
 import java.time.temporal.{ChronoField, ChronoUnit, TemporalAdjusters}
-import prickle._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 case class AlarmState(alarm: Alarm, state: AlarmState.State, started: Instant, nextOccurrence: Instant, recurrenceInstance: Int,
                       subrecurrenceInstance: Int, nextReminder: Option[Instant], reminderInstance: Option[Int])
@@ -26,10 +25,6 @@ object AlarmState {
   case object Showing extends State
   case object Ended extends State
   
-  import AlarmPicklers._
-  implicit val statePickler = CompositePickler[State].concreteType[Active.type].concreteType[Showing.type].concreteType[Ended.type]
-  implicit val alarmStatePickler = implicitly[Pickler[AlarmState]]
-  implicit val alarmStateUnpickler = implicitly[Unpickler[AlarmState]]
 }
 
 object AlarmStateMachine {
@@ -40,7 +35,7 @@ object AlarmStateMachine {
   case class NotifyAlarm(next: AlarmState) extends CheckResult
   case class AutoCloseAlarmNotification(next: AlarmState) extends CheckResult
   
-  private implicit def comparableOrderingOps[C <: java.lang.Comparable[C]](c: C)(implicit ord: Ordering[C]) = ord.mkOrderingOps(c) 
+  private implicit def comparableOrderingOps[C <: java.lang.Comparable[C]](c: C)(implicit ord: Ordering[C]): ord.OrderingOps = ord.mkOrderingOps(c) 
   def checkAlarm(now: Instant, state: AlarmState): CheckResult = {
     import state.alarm._
     //first check is the alarm is due
@@ -91,7 +86,10 @@ object AlarmStateMachine {
       case Right(at) if at.atZone(ZoneId.systemDefault).toInstant <= state.nextOccurrence => state.copy(state = AlarmState.Ended)
     }
     
-    shouldEnd foreach (return _)
+    shouldEnd match
+      case Some(value) => return value
+      case _ => 
+    
     
     val stateWithOccurrenceUpdated = subrepetition match {
       case Some(Alarm.Repetition(every, Left(instances))) if state.subrecurrenceInstance < instances =>
@@ -120,7 +118,7 @@ object AlarmStateMachine {
             val onDaysScala = onDays.asScala
             next = Iterator.iterate(next)(_.plusWeeks(every)).flatMap(week => 
               onDaysScala.iterator.map(d => week.`with`(ChronoField.DAY_OF_WEEK, d.getValue))).filterNot(d =>
-              exceptionOnDates contains d.toLocalDate).find(_ isAfter next).get
+              exceptionOnDates contains d.toLocalDate).find(_ `isAfter` next).get
             state.copy(nextOccurrence = next.toInstant, recurrenceInstance = state.recurrenceInstance + 1, subrecurrenceInstance = 0)
         
           case Alarm.MonthlyRecurrence(every, onDayOfMonth) =>
@@ -134,7 +132,7 @@ object AlarmStateMachine {
         
             next = Iterator.iterate(next)(_.plusYears(1)).flatMap(date =>
               onMonthsScala.iterator.map(m => date.withMonth(m.getValue)).flatMap(calculateDateAtDayOfMonth(_, onDayOfMonth, febAction))
-            ).filterNot(d => exceptionOnDates contains d.toLocalDate).find(_ isAfter next).get
+            ).filterNot(d => exceptionOnDates contains d.toLocalDate).find(_ `isAfter` next).get
         
             state.copy(nextOccurrence = next.toInstant, recurrenceInstance = state.recurrenceInstance + 1, subrecurrenceInstance = 0)
         }

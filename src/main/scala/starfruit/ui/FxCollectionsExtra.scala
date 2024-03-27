@@ -3,7 +3,7 @@ package starfruit.ui
 import javafx.beans.InvalidationListener
 import javafx.collections.ListChangeListener
 import javafx.collections.ObservableList
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 object FxCollectionsExtra {
 
@@ -35,11 +35,15 @@ object FxCollectionsExtra {
     
     def add(index: Int, e: U): Unit = ???
     def add(e: U): Boolean = ???
-    def addAll(index: Int, elems: java.util.Collection[_ <: U]): Boolean = ???
-    def addAll(elems: java.util.Collection[_ <: U]): Boolean = ???
+    def addAll(index: Int, elems: java.util.Collection[? <: U]): Boolean = ???
+    def addAll(elems: java.util.Collection[? <: U]): Boolean = ???
+    def addAll(x$0: Array[? <: U]): Boolean = ???
+    def removeAll(x$0: Array[? <: U]): Boolean = ???
+    def retainAll(x$0: Array[? <: U]): Boolean = ???
+    def setAll(x$0: Array[? <: U]): Boolean = ???
     def clear(): Unit = ???
     def contains(e: Any): Boolean = ???
-    def containsAll(elemes: java.util.Collection[_]): Boolean = ???
+    def containsAll(elemes: java.util.Collection[?]): Boolean = ???
     def get(index: Int): U = getMapped(underlying.get(index))
     def indexOf(e: Any): Int = reverseIndex.get(new RefEqual(e.asInstanceOf[U])).fold(-1)(underlying.indexOf)
     def isEmpty(): Boolean = underlying.isEmpty
@@ -53,19 +57,19 @@ object FxCollectionsExtra {
     def listIterator(): java.util.ListIterator[U] = ???
     def remove(indx: Int): U = ???
     def remove(e: Any): Boolean = ???
-    def removeAll(elems: java.util.Collection[_]): Boolean = ???
-    def retainAll(elems: java.util.Collection[_]): Boolean = ???
+    def removeAll(elems: java.util.Collection[?]): Boolean = ???
+    def retainAll(elems: java.util.Collection[?]): Boolean = ???
     def set(index: Int, e: U): U = ???
     def size(): Int = underlying.size
     def subList(from: Int, to: Int): java.util.List[U] = underlying.subList(from, to).asScala.map(getMapped).asJava
-    def toArray[T2](res: Array[T2 with Object]): Array[T2 with Object] = {
-      underlying.asScala.map(getMapped).zipWithIndex foreach (e => res(e._2) = e._1.asInstanceOf[T2 with Object])
+    def toArray[T2](res: Array[T2 & Object]): Array[T2 & Object] = {
+      underlying.asScala.map(getMapped).zipWithIndex foreach (e => res(e._2) = e._1.asInstanceOf[T2 & Object])
       res
     }
     def toArray(): Array[Object] = underlying.asScala.map(getMapped).asJava.toArray()
   
     class MappedInvalidationListener(val underlying: InvalidationListener) extends InvalidationListener {
-      def invalidated(obs) = if (obs == ObservableView.this.underlying) underlying.invalidated(ObservableView.this)
+      def invalidated(obs: javafx.beans.Observable) = if (obs == ObservableView.this.underlying) underlying.invalidated(ObservableView.this)
     }
     val mappedInvalidationListeners = collection.mutable.Buffer[MappedInvalidationListener]()
     // Members declared in javafx.beans.Observable
@@ -77,13 +81,10 @@ object FxCollectionsExtra {
     def removeListener(listener: InvalidationListener): Unit = mappedInvalidationListeners.find(_.underlying == listener) foreach underlying.removeListener
   
     // Members declared in javafx.collections.ObservableList
-    def addAll(elems: U*): Boolean = ???
-    
     def remove(from: Int, to: Int): Unit = ???
-    def removeAll(elems: U*): Boolean = ???
     
-    class MappedListChangeListener(val underlying: ListChangeListener[_ >: U]) extends ListChangeListener[T] {
-      def onChanged(evt: ListChangeListener.Change[_ <: T]): Unit = underlying onChanged new ListChangeListener.Change[U](ObservableView.this) {
+    class MappedListChangeListener(val underlying: ListChangeListener[? >: U]) extends ListChangeListener[T] {
+      def onChanged(evt: ListChangeListener.Change[? <: T]): Unit = underlying `onChanged` new ListChangeListener.Change[U](ObservableView.this) {
         def getFrom(): Int = evt.getFrom
         protected def getPermutation(): Array[Int] = {
           val m = evt.getClass.getDeclaredMethod("getPermutation")
@@ -97,16 +98,13 @@ object FxCollectionsExtra {
       }
     }
     val mappedListChangeListeners = collection.mutable.Buffer[MappedListChangeListener]()
-    def addListener(listener: ListChangeListener[_ >: U]): Unit = {
+    def addListener(listener: ListChangeListener[? >: U]): Unit = {
       val mapped = new MappedListChangeListener(listener)
       mappedListChangeListeners += mapped
       underlying.addListener(mapped)
     }
-    def removeListener(listener: ListChangeListener[_ >: U]): Unit = mappedListChangeListeners.find(_.underlying == listener) foreach underlying.removeListener
+    def removeListener(listener: ListChangeListener[? >: U]): Unit = mappedListChangeListeners.find(_.underlying == listener) foreach underlying.removeListener
     
-    def retainAll(elems: U*): Boolean = ???
-    def setAll(elems: java.util.Collection[_ <: U]): Boolean = ???
-    def setAll(elems: U*): Boolean = ???
-
+    def setAll(elems: java.util.Collection[? <: U]): Boolean = ???
   }
 }

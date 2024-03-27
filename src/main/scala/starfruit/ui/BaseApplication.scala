@@ -3,11 +3,11 @@ package starfruit.ui
 import javafx.application.Application
 import javafx.scene._
 import javafx.stage._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 
 trait BaseApplication extends Application {
-  def sceneRoot(): Parent
+  def sceneRoot: Parent
   override def init() = {
     println("named parameters " + getParameters.getNamed)
     val fontSize = getParameters.getNamed.asScala.get("fontSize").map(_.toDouble)
@@ -24,10 +24,10 @@ trait BaseApplication extends Application {
       System.setProperty("prism.text", "t2k")
     }
   }
-  def start(stage): Unit = {
+  def start(stage: Stage): Unit = {
     stage.setTitle("Starfruit")
     
-    val root = sceneRoot()
+    val root = sceneRoot
     val scene = new Scene(root)
     
     stage.setScene(scene)

@@ -1,6 +1,6 @@
 package starfruit.ui
 
-import language.reflectiveCalls
+import scala.reflect.Selectable.reflectiveSelectable
 
 import better.files._
 import javafx.application.Platform
@@ -13,7 +13,7 @@ import javafx.scene.text._
 import javafx.stage._
 import java.time.{DayOfWeek, LocalDateTime, Month, Instant}
 import starfruit.Alarm
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
   initOwner(parent)
@@ -31,9 +31,9 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
     })
   
   val tryButton = new Button("Try")
-  val okButton = new Button("✓ Ok")
+  val okButton = new Button("Ok")
   okButton.setDefaultButton(true)
-  val cancelButton = new Button("🚫 Cancel")
+  val cancelButton = new Button("Cancel")
   cancelButton.setCancelButton(true)
   cancelButton.setOnAction(_ => close())
   
@@ -48,14 +48,14 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
   setScene(new Scene(
       new BorderPane { $ =>
         setPadding(new Insets(15))
-        val tabbedPane = $ center new TabPane()
+        val tabbedPane = $ `center` new TabPane()
         tabbedPane.getTabs.add(new Tab("Alarm", alarmPane).modify(_.setClosable(false)))
         tabbedPane.getTabs.add(new Tab("Recurrence", recurrencePane).modify(_.setClosable(false)))
         
-        $ bottom new BorderPane { $ =>
+        $ `bottom` new BorderPane { $ =>
           BorderPane.setMargin(this, new Insets(10, 0, 0, 0))
 //          $ left extraButton
-          $ right hbox(tryButton, okButton, cancelButton)(10, alignment = Pos.CENTER_RIGHT)
+          $ `right` hbox(tryButton, okButton, cancelButton)(10, alignment = Pos.CENTER_RIGHT)
         }
       }).modify(_.getStylesheets.addAll(parent.getScene.getStylesheets)))
   
@@ -210,12 +210,12 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
     case m: alarmPane.action.commandOutputMode.type => Alarm.ScriptOutputMessage(m.script.getText)
   }
   private def getFont = {
-    val styles = alarmPane.action.fontSelectorDialog.fontPane.getFont.getStyle.split(" ").map(_.toUpperCase)
+    val styles = alarmPane.action.fontSelectorDialog.fontPane.getFont().getStyle.split(" ").map(_.toUpperCase)
     val invalidWeights = Seq(FontWeight.LIGHT, FontWeight.EXTRA_BOLD, FontWeight.EXTRA_LIGHT, FontWeight.MEDIUM, FontWeight.SEMI_BOLD)
     val weight = styles.map(FontWeight.findByName).filter(w => w != null && !invalidWeights.contains(w)).headOption.map(_.toString) //I have to remove invalid weights that CSS don't support
     val style = styles.collectFirst { case "REGULAR" => "normal"; case i@"ITALIC" => "italic" }
     
-    (weight.orElse(style).getOrElse("normal") + " " + alarmPane.action.fontSelectorDialog.fontPane.getFont.getSize + " \"" + alarmPane.action.fontSelectorDialog.fontPane.getFont.getFamily + "\"").toLowerCase
+    (weight.orElse(style).getOrElse("normal") + " " + alarmPane.action.fontSelectorDialog.fontPane.getFont().getSize + " \"" + alarmPane.action.fontSelectorDialog.fontPane.getFont().getFamily + "\"").toLowerCase
   }
   def getAlarm: Alarm = {
     Alarm(
@@ -251,7 +251,7 @@ class AlarmDialog(parent: Window, initial: Option[Alarm]) extends Stage() {
           Some(Right(LocalDateTime.of(recurrencePane.recurrenceEnd.endByDate.getValue, recurrencePane.recurrenceEnd.endByHourPicker.getTime)))
         case _ => None
       },
-      exceptionOnDates = recurrencePane.exceptions.exceptionsList.getItems.asScala,
+      exceptionOnDates = recurrencePane.exceptions.exceptionsList.getItems.asScala.toSeq,
       exceptionOnWorkingTime = recurrencePane.exceptions.onlyDuringWorktime.isSelected,
       reminder = alarmPane.extra.reminder.isSelected match {
         case true => Some(Alarm.Reminder(alarmPane.extra.reminderDurationPicker.getDuration,
